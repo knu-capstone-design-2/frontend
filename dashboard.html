@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Usage Dashboard</title>
+<link rel="stylesheet" href="dashboard.css"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">INTERDATA</div>
+    <nav>
+      <a href="#"> Host Machine</a>
+      <a href="#"> Container</a>
+    </nav>
+  </div>
+
+  <div class="main-content">
+    <header class="main-header">
+      <h1>Dashboard</h1>
+    </header>
+
+    <div class="dashboard">
+
+      <div class="row summary-section">
+        <div class="summary-card">
+          <h3>Network Speed Surge</h3>
+          <ul id="topSpeedHosts"></ul>
+        </div>
+        <div class="summary-card">
+          <h3>Recent Under-resourced</h3>
+          <ul id="topUsageHosts"></ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <div class="header">
+            <h2>Host Machine Usage</h2>
+            <div class="toggle-buttons host">
+              <button class="toggle active" data-type="cpu" data-target="host">CPU</button>
+              <button class="toggle" data-type="memory" data-target="host">Memory</button>
+              <button class="toggle" data-type="disk" data-target="host">Disk</button>
+            </div>
+          </div>
+          <canvas id="hostChart"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="header">
+            <h2>Container Usage</h2>
+            <div class="toggle-buttons container">
+              <button class="toggle active" data-type="cpu" data-target="container">CPU</button>
+              <button class="toggle" data-type="memory" data-target="container">Memory</button>
+              <button class="toggle" data-type="disk" data-target="container">Disk</button>
+            </div>
+          </div>
+          <canvas id="containerChart"></canvas>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <div class="header">
+            <h2>Network Traffic</h2>
+          </div>
+          <canvas id="networkChart"></canvas>
+        </div>
+
+        <div class="card">
+          <div class="header">
+            <h2>Network Speed</h2>
+          </div>
+          <canvas id="networkSpeedChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
