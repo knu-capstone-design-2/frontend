@@ -1,313 +1,235 @@
+// dashboard.js
+
 let hostChart, containerChart;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Host Chart
   fetch('host.json')
     .then(res => res.json())
-    .then(data => {
-      initializeChart('hostChart', data, 'cpu', 'host');
-      setupToggleButtons(data, 'host');
-      initializeNetworkChart(data);  
-    });
+    .then(hosts => {
+      fetch('container.json')
+        .then(res => res.json())
+        .then(containers => {
+          // 1. Usage charts
+          initializeChart('hostChart', hosts, 'cpu', 'host');
+          setupToggleButtons(hosts, 'host');
+          initializeChart('containerChart', containers, 'cpu', 'container');
+          setupToggleButtons(containers, 'container');
 
-  // Container Chart
-  fetch('container.json')
-    .then(res => res.json())
-    .then(data => {
-      initializeChart('containerChart', data, 'cpu', 'container');
-      setupToggleButtons(data, 'container');
+          // 2. Summary cards
+          renderSummary(hosts, containers);
+
+          // 3. Network charts (host.json만 사용)
+          initializeNetworkChart(hosts);
+          initializeNetworkSpeedChart(hosts);
+        });
     });
 });
 
-const topSpeedHosts = [
-    { host: "host1", speed: "1200 Mbps" },
-    { host: "host2", speed: "980 Mbps" },
-    { host: "host3", speed: "850 Mbps" }
-  ];
-  
-  const topUsageHosts = [
-    { host: "host5", resource: "Memory", usage: "92%" },
-    { host: "host3", resource: "Disk", usage: "87%" },
-    { host: "host8", resource: "CPU", usage: "85%" }
-  ];
-  
-  function renderSummaryBoxes() {
-    const speedList = document.getElementById("topSpeedHosts");
-    const usageList = document.getElementById("topUsageHosts");
-  
-    topSpeedHosts.forEach(item => {
-      const li = document.createElement("li");
-      li.textContent = `${item.host} - ${item.speed}`;
-      speedList.appendChild(li);
+function renderSummary(hostData, containerData) {
+  // Top 3 hosts by interface speed
+  const hostSpeeds = hostData
+    .map(h => ({
+      name:  h.hostName,
+      speed: (parseInt(h.network.eth0_0.speedbps) + parseInt(h.network.wlan0_1.speedbps)) / 1e6
+    }))
+    .sort((a, b) => b.speed - a.speed)
+    .slice(0, 3);
+
+  hostSpeeds.forEach(h => {
+    const li = document.createElement('li');
+    li.textContent = `${h.name} - ${h.speed.toFixed(0)} Mbps`;
+    document.getElementById('topSpeedHosts').appendChild(li);
+  });
+
+  // Top 3 containers by interface speed
+  const contSpeeds = containerData
+    .map(c => ({
+      name:  c.containerName,
+      speed: c.network.eth0.speedBps / 1e6
+    }))
+    .sort((a, b) => b.speed - a.speed)
+    .slice(0, 3);
+
+  contSpeeds.forEach(c => {
+    const li = document.createElement('li');
+    li.textContent = `${c.name} - ${c.speed.toFixed(0)} Mbps`;
+    document.getElementById('topSpeedContainers').appendChild(li);
+  });
+
+  // Under-resourced: top 3 by CPU usage
+  const combined = [];
+
+  hostData.forEach(h => combined.push({
+    name:   h.hostName,
+    cpu:    h.cpuUsagePercent,
+    memory: (h.memoryUsedBytes / h.memoryTotalBytes) * 100,
+    disk:   (h.diskUsedBytes     / h.diskTotalBytes)   * 100
+  }));
+
+  containerData.forEach(c => combined.push({
+    name:   c.containerName,
+    cpu:    c.cpuUsagePercent,
+    memory: (c.memoryUsedBytes / c.memoryTotalBytes) * 100,
+    disk:   ((c.diskReadBytes + c.diskWriteBytes) /
+             (c.diskReadBytes + c.diskWriteBytes + 1)) * 100
+  }));
+
+  combined
+    .sort((a, b) => b.cpu - a.cpu)
+    .slice(0, 3)
+    .forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${item.name}</td>
+        <td>${item.cpu.toFixed(0)}%</td>
+        <td>${item.memory.toFixed(0)}%</td>
+        <td>${item.disk.toFixed(0)}%</td>
+      `;
+      document.querySelector('#underResourcedTable tbody').appendChild(tr);
     });
-  
-    topUsageHosts.forEach(item => {
-      const li = document.createElement("li");
-      li.textContent = `${item.host} (${item.resource}: ${item.usage})`;
-      usageList.appendChild(li);
-    });
-  }
-  
-  document.addEventListener("DOMContentLoaded", renderSummaryBoxes);
-  
-// Bar 차트 초기화 함수 
+}
+
+// Usage chart helpers
 function initializeChart(canvasId, data, type, target) {
   const ctx = document.getElementById(canvasId).getContext('2d');
-  const chartData = prepareChartData(data, type, target);
-
+  const cd  = prepareChartData(data, type, target);
   const chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: chartData.labels,
+      labels:   cd.labels,
       datasets: [{
-        data: chartData.values,
+        data: cd.values,
         backgroundColor: '#6a5acd',
         borderRadius: 10,
-        barThickness: 20,
+        barThickness: 20
       }]
     },
     options: {
       scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: '#eee' }
-        },
-        x: {
-          grid: { color: '#eee' }
-        }
+        y: { beginAtZero: true, grid: { color: '#eee' } },
+        x: { grid: { color: '#eee' } }
       },
-      plugins: {
-        legend: { display: false },
-      }
+      plugins: { legend: { display: false } }
     }
   });
-
   if (target === 'host') hostChart = chart;
   else containerChart = chart;
 }
 
-// 데이터 타입별 토글 버튼 설정
 function setupToggleButtons(data, target) {
-  const buttons = document.querySelectorAll(`.toggle-buttons.${target} .toggle`);
-  buttons.forEach(button => {
-    button.addEventListener('click', () => {
-      buttons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      const type = button.getAttribute('data-type');
-      const chart = target === 'host' ? hostChart : containerChart;
-      updateChart(chart, data, type, target);
+  document.querySelectorAll(`.toggle-buttons.${target} .toggle`).forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll(`.toggle-buttons.${target} .toggle`)
+        .forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const type  = btn.getAttribute('data-type');
+      const chart = (target === 'host') ? hostChart : containerChart;
+      const cd    = prepareChartData(data, type, target);
+
+      chart.data.labels           = cd.labels;
+      chart.data.datasets[0].data = cd.values;
+      chart.update();
     });
   });
 }
 
-// 차트 업데이트 함수
-function updateChart(chart, data, type, target) {
-  const chartData = prepareChartData(data, type, target);
-  chart.data.labels = chartData.labels;
-  chart.data.datasets[0].data = chartData.values;
-  chart.update();
-}
-
-// Host/Container 데이터 준비
 function prepareChartData(data, type, target) {
-  const labels = target === 'host'
-    ? data.map((_, index) => `Host ${index + 1}`)
-    : data.map(item => item.containerName);
+  const labels = (target === 'host')
+    ? data.map(h => h.hostName)
+    : data.map(c => c.containerName);
 
-  let values;
-  switch (type) {
-    case 'cpu':
-      values = data.map(item => item.cpuUsagePercent);
-      break;
-    case 'memory':
-      values = data.map(item =>
-        ((item.memoryUsedBytes / item.memoryTotalBytes) * 100).toFixed(1)
-      );
-      break;
-    case 'disk':
-      values = data.map(item =>
-        ((item.diskWriteBytes + item.diskReadBytes) / (item.diskWriteBytes + item.diskReadBytes + 1)) * 100
-      );
-      break;
-    default:
-      values = [];
+  let values = [];
+  if (type === 'cpu') {
+    values = data.map(x => x.cpuUsagePercent);
+  } else if (type === 'memory') {
+    values = data.map(x => ((x.memoryUsedBytes / x.memoryTotalBytes) * 100).toFixed(1));
+  } else if (type === 'disk') {
+    values = data.map(x => (((x.diskReadBytes + x.diskWriteBytes) /
+                             (x.diskReadBytes + x.diskWriteBytes + 1)) * 100).toFixed(1));
   }
 
   return { labels, values };
 }
 
-// 네트워크 차트 초기화 (Bytes Sent/Received)
+// Network traffic chart (host.json만 사용)
 function initializeNetworkChart(hostData) {
-  const labels = hostData.map(h => h.hostName || 'Unknown');
-
-  const bytesReceivedData = hostData.map(h =>
-    (parseInt(h.network?.eth0_0?.bytesReceived || 0)) +
-    (parseInt(h.network?.wlan0_1?.bytesReceived || 0))
+  const labels   = hostData.map(h => h.hostName);
+  const received = hostData.map(h =>
+    parseInt(h.network.eth0_0.bytesReceived) + parseInt(h.network.wlan0_1.bytesReceived)
+  );
+  const sent = hostData.map(h =>
+    parseInt(h.network.eth0_0.bytesSent) + parseInt(h.network.wlan0_1.bytesSent)
   );
 
-  const bytesSentData = hostData.map(h =>
-    (parseInt(h.network?.eth0_0?.bytesSent || 0)) +
-    (parseInt(h.network?.wlan0_1?.bytesSent || 0))
-  );
-
-  const ctx = document.getElementById("networkChart").getContext("2d");
-  new Chart(ctx, {
-    type: "line",
+  new Chart(document.getElementById('networkChart').getContext('2d'), {
+    type: 'line',
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
-          label: "Bytes Received",
-          data: bytesReceivedData,
-          borderColor: "rgb(54, 162, 235)",
+          label: 'Bytes Received',
+          data: received,
+          fill: true,
+          tension: 0.3,
+          borderColor: '#CC9900',                // 진한 노란색
+          backgroundColor: 'rgba(204,153,0,0.3)' // 반투명 채우기
+        },
+        {
+          label: 'Bytes Sent',
+          data: sent,
+          fill: true,
+          tension: 0.3,
+          borderColor: '#996600',                // 아주 진한 노란색
+          backgroundColor: 'rgba(153,102,0,0.3)' // 반투명 채우기
+        }
+      ]
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => (v / 1e6).toFixed(1) + ' MB'
+          }
+        }
+      }
+    }
+  });
+}
+
+// Network speed chart (host.json만 사용)
+function initializeNetworkSpeedChart(hostData) {
+  const labels    = hostData.map(h => h.hostName);
+  const ethSpeed  = hostData.map(h => parseInt(h.network.eth0_0.speedbps) / 1e6);
+  const wlanSpeed = hostData.map(h => parseInt(h.network.wlan0_1.speedbps) / 1e6);
+
+  new Chart(document.getElementById('networkSpeedChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'eth0 (Mbps)',
+          data: ethSpeed,
           fill: false,
           tension: 0.3
         },
         {
-          label: "Bytes Sent",
-          data: bytesSentData,
-          borderColor: "rgb(255, 99, 132)",
+          label: 'wlan0 (Mbps)',
+          data: wlanSpeed,
           fill: false,
           tension: 0.3
         }
       ]
     },
     options: {
-      responsive: true,
-      plugins: {
-        legend: { position: "top" },
-        title: {
-          display: true,
-          text: "Network Bytes Sent/Received per Host"
-        }
-      },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            callback: function(value) {
-              return (value / 1_000_000).toFixed(1) + " MB";
-            }
-          }
+          title: { display: true, text: 'Mbps' }
         }
       }
     }
   });
 }
-
-function initializeNetworkChart(hostData) {
-    const labels = hostData.map(h => h.hostName || 'Unknown');
-  
-    const bytesReceivedData = hostData.map(h =>
-      (parseInt(h.network?.eth0_0?.bytesReceived || 0)) +
-      (parseInt(h.network?.wlan0_1?.bytesReceived || 0))
-    );
-  
-    const bytesSentData = hostData.map(h =>
-      (parseInt(h.network?.eth0_0?.bytesSent || 0)) +
-      (parseInt(h.network?.wlan0_1?.bytesSent || 0))
-    );
-  
-    const ctx = document.getElementById("networkChart").getContext("2d");
-    new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Bytes Received",
-            data: bytesReceivedData,
-            borderColor: "rgb(54, 162, 235)",
-            fill: false,
-            tension: 0.3
-          },
-          {
-            label: "Bytes Sent",
-            data: bytesSentData,
-            borderColor: "rgb(255, 99, 132)",
-            fill: false,
-            tension: 0.3
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: "top" },
-          title: {
-            display: true,
-            text: "Network Bytes Sent/Received per Host"
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) {
-                return (value / 1_000_000).toFixed(1) + " MB";
-              }
-            }
-          }
-        }
-      }
-    });
-  
-
-    initializeNetworkSpeedChart(hostData);
-  }
-  
-  function initializeNetworkSpeedChart(hostData) {
-    const labels = hostData.map(h => h.hostName || 'Unknown');
-  
-    const ethSpeeds = hostData.map(h =>
-      parseInt(h.network?.eth0_0?.speedbps || 0) / 1_000_000
-    );
-  
-    const wlanSpeeds = hostData.map(h =>
-      parseInt(h.network?.wlan0_1?.speedbps || 0) / 1_000_000
-    );
-  
-    const ctx = document.getElementById("networkSpeedChart").getContext("2d");
-    new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "eth0 Speed (Mbps)",
-            data: ethSpeeds,
-            borderColor: "rgb(75, 192, 192)",
-            fill: false,
-            tension: 0.3
-          },
-          {
-            label: "wlan0 Speed (Mbps)",
-            data: wlanSpeeds,
-            borderColor: "rgb(255, 205, 86)",
-            fill: false,
-            tension: 0.3
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: "top" },
-          title: {
-            display: true,
-            text: "Network Interface Speed (Mbps)"
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: "Speed (Mbps)"
-            }
-          }
-        }
-      }
-    });
-  }
-  
