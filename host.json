@@ -17,10 +17,20 @@
         "bytesReceived": "750000000",
         "bytesSent": "600000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "1000000000",
+        "bytesReceived": "500000000",
+        "bytesSent": "500000000"
+      },
+      "wlan0_2": {
         "speedbps": "250000000",
         "bytesReceived": "200000000",
         "bytesSent": "150000000"
+      },
+      "wlan1_3": {
+        "speedbps": "100000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "50000000"
       }
     }
   },
@@ -42,10 +52,20 @@
         "bytesReceived": "300000000",
         "bytesSent": "250000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "1000000000",
+        "bytesReceived": "150000000",
+        "bytesSent": "100000000"
+      },
+      "wlan0_2": {
         "speedbps": "500000000",
         "bytesReceived": "100000000",
         "bytesSent": "70000000"
+      },
+      "wlan1_3": {
+        "speedbps": "200000000",
+        "bytesReceived": "50000000",
+        "bytesSent": "30000000"
       }
     }
   },
@@ -67,10 +87,20 @@
         "bytesReceived": "900000000",
         "bytesSent": "850000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "500000000",
+        "bytesReceived": "400000000",
+        "bytesSent": "350000000"
+      },
+      "wlan0_2": {
         "speedbps": "150000000",
         "bytesReceived": "300000000",
         "bytesSent": "200000000"
+      },
+      "wlan1_3": {
+        "speedbps": "100000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "150000000"
       }
     }
   },
@@ -92,10 +122,20 @@
         "bytesReceived": "400000000",
         "bytesSent": "450000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "600000000",
+        "bytesReceived": "300000000",
+        "bytesSent": "350000000"
+      },
+      "wlan0_2": {
         "speedbps": "350000000",
         "bytesReceived": "250000000",
         "bytesSent": "150000000"
+      },
+      "wlan1_3": {
+        "speedbps": "200000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "80000000"
       }
     }
   },
@@ -117,10 +157,20 @@
         "bytesReceived": "1000000000",
         "bytesSent": "900000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "1500000000",
+        "bytesReceived": "800000000",
+        "bytesSent": "700000000"
+      },
+      "wlan0_2": {
         "speedbps": "400000000",
         "bytesReceived": "300000000",
         "bytesSent": "250000000"
+      },
+      "wlan1_3": {
+        "speedbps": "250000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "150000000"
       }
     }
   },
@@ -142,10 +192,20 @@
         "bytesReceived": "100000000",
         "bytesSent": "50000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "100000000",
+        "bytesReceived": "50000000",
+        "bytesSent": "20000000"
+      },
+      "wlan0_2": {
         "speedbps": "100000000",
         "bytesReceived": "200000000",
         "bytesSent": "100000000"
+      },
+      "wlan1_3": {
+        "speedbps": "50000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "50000000"
       }
     }
   },
@@ -167,10 +227,20 @@
         "bytesReceived": "700000000",
         "bytesSent": "650000000"
       },
-      "wlan0_1": {
+      "eth1_1": {
+        "speedbps": "1200000000",
+        "bytesReceived": "500000000",
+        "bytesSent": "450000000"
+      },
+      "wlan0_2": {
         "speedbps": "250000000",
         "bytesReceived": "150000000",
         "bytesSent": "100000000"
+      },
+      "wlan1_3": {
+        "speedbps": "150000000",
+        "bytesReceived": "120000000",
+        "bytesSent": "80000000"
       }
     }
   }
