@@ -1,0 +1,121 @@
+[
+  {
+    "containerName": "Container A",
+    "containerId": "abc123def456",
+    "cpuUsagePercent": 8.7,
+    "memoryTotalBytes": 2147483648,
+    "memoryUsedBytes": 1476395008,
+    "memoryFreeBytes": 671088640,
+    "diskReadBytes": 10485760,
+    "diskWriteBytes": 20971520,
+    "network": {
+      "eth0": {
+        "speedBps": 500000000,
+        "bytesReceived": 15000000,
+        "bytesSent": 10000000
+      }
+    }
+  },
+  {
+    "containerName": "Container B",
+    "containerId": "def456ghi789",
+    "cpuUsagePercent": 12.5,
+    "memoryTotalBytes": 1073741824,
+    "memoryUsedBytes": 838860800,
+    "memoryFreeBytes": 234881024,
+    "diskReadBytes": 5242880,
+    "diskWriteBytes": 10485760,
+    "network": {
+      "eth0": {
+        "speedBps": 1200000000,
+        "bytesReceived": 10000000,
+        "bytesSent": 8000000
+      }
+    }
+  },
+  {
+    "containerName": "Container C",
+    "containerId": "ghi789jkl012",
+    "cpuUsagePercent": 3.2,
+    "memoryTotalBytes": 4294967296,
+    "memoryUsedBytes": 2147483648,
+    "memoryFreeBytes": 2147483648,
+    "diskReadBytes": 15728640,
+    "diskWriteBytes": 5242880,
+    "network": {
+      "eth0": {
+        "speedBps": 750000000,
+        "bytesReceived": 20000000,
+        "bytesSent": 15000000
+      }
+    }
+  },
+  {
+    "containerName": "Container D",
+    "containerId": "jkl012mno345",
+    "cpuUsagePercent": 22.9,
+    "memoryTotalBytes": 3221225472,
+    "memoryUsedBytes": 2818572288,
+    "memoryFreeBytes": 402653184,
+    "diskReadBytes": 3145728,
+    "diskWriteBytes": 9437184,
+    "network": {
+      "eth0": {
+        "speedBps": 100000000,
+        "bytesReceived": 50000000,
+        "bytesSent": 40000000
+      }
+    }
+  },
+  {
+    "containerName": "Container E",
+    "containerId": "mno345pqr678",
+    "cpuUsagePercent": 5.1,
+    "memoryTotalBytes": 2147483648,
+    "memoryUsedBytes": 1073741824,
+    "memoryFreeBytes": 1073741824,
+    "diskReadBytes": 10485760,
+    "diskWriteBytes": 5242880,
+    "network": {
+      "eth0": {
+        "speedBps": 850000000,
+        "bytesReceived": 25000000,
+        "bytesSent": 20000000
+      }
+    }
+  },
+  {
+    "containerName": "Container F",
+    "containerId": "pqr678stu901",
+    "cpuUsagePercent": 15.4,
+    "memoryTotalBytes": 5368709120,
+    "memoryUsedBytes": 3489660928,
+    "memoryFreeBytes": 1879048192,
+    "diskReadBytes": 20971520,
+    "diskWriteBytes": 10485760,
+    "network": {
+      "eth0": {
+        "speedBps": 2000000000,
+        "bytesReceived": 30000000,
+        "bytesSent": 35000000
+      }
+    }
+  },
+  {
+    "containerName": "Container G",
+    "containerId": "stu901vwx234",
+    "cpuUsagePercent": 1.8,
+    "memoryTotalBytes": 1073741824,
+    "memoryUsedBytes": 536870912,
+    "memoryFreeBytes": 536870912,
+    "diskReadBytes": 524288,
+    "diskWriteBytes": 1048576,
+    "network": {
+      "eth0": {
+        "speedBps": 300000000,
+        "bytesReceived": 10000000,
+        "bytesSent": 5000000
+      }
+    }
+  }
+]

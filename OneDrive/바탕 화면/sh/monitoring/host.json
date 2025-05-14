@@ -1,0 +1,247 @@
+[
+  {
+    "hostName": "Host A",
+    "hostId": "1a2b3c4d-5e6f-7890-abcd-ef2345678901",
+    "cpuUsagePercent": 65.2,
+    "memoryTotalBytes": 34359738368,
+    "memoryUsedBytes": 21474836480,
+    "memoryFreeBytes": 12884901888,
+    "diskTotalBytes": 1024209543168,
+    "diskUsedBytes": 702110190592,
+    "diskFreeBytes": 322099353576,
+    "diskReadBytes": 234567890,
+    "diskWriteBytes": 876543210,
+    "network": {
+      "eth0_0": {
+        "speedbps": "500000000",
+        "bytesReceived": "750000000",
+        "bytesSent": "600000000"
+      },
+      "eth1_1": {
+        "speedbps": "1000000000",
+        "bytesReceived": "500000000",
+        "bytesSent": "500000000"
+      },
+      "wlan0_2": {
+        "speedbps": "250000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "150000000"
+      },
+      "wlan1_3": {
+        "speedbps": "100000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "50000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host B",
+    "hostId": "2b3c4d5e-6f70-8910-abcd-ef3456789012",
+    "cpuUsagePercent": 34.7,
+    "memoryTotalBytes": 8589934592,
+    "memoryUsedBytes": 4294967296,
+    "memoryFreeBytes": 4294967296,
+    "diskTotalBytes": 256110190592,
+    "diskUsedBytes": 126110190592,
+    "diskFreeBytes": 130000000000,
+    "diskReadBytes": 345678901,
+    "diskWriteBytes": 765432109,
+    "network": {
+      "eth0_0": {
+        "speedbps": "1500000000",
+        "bytesReceived": "300000000",
+        "bytesSent": "250000000"
+      },
+      "eth1_1": {
+        "speedbps": "1000000000",
+        "bytesReceived": "150000000",
+        "bytesSent": "100000000"
+      },
+      "wlan0_2": {
+        "speedbps": "500000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "70000000"
+      },
+      "wlan1_3": {
+        "speedbps": "200000000",
+        "bytesReceived": "50000000",
+        "bytesSent": "30000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host C",
+    "hostId": "3c4d5e6f-7081-9021-abcd-ef4567890123",
+    "cpuUsagePercent": 79.5,
+    "memoryTotalBytes": 17179869184,
+    "memoryUsedBytes": 16179869184,
+    "memoryFreeBytes": 1000000000,
+    "diskTotalBytes": 512110190592,
+    "diskUsedBytes": 402110190592,
+    "diskFreeBytes": 110000000000,
+    "diskReadBytes": 456789012,
+    "diskWriteBytes": 654321098,
+    "network": {
+      "eth0_0": {
+        "speedbps": "750000000",
+        "bytesReceived": "900000000",
+        "bytesSent": "850000000"
+      },
+      "eth1_1": {
+        "speedbps": "500000000",
+        "bytesReceived": "400000000",
+        "bytesSent": "350000000"
+      },
+      "wlan0_2": {
+        "speedbps": "150000000",
+        "bytesReceived": "300000000",
+        "bytesSent": "200000000"
+      },
+      "wlan1_3": {
+        "speedbps": "100000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "150000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host D",
+    "hostId": "4d5e6f70-8192-0132-abcd-ef5678901234",
+    "cpuUsagePercent": 23.1,
+    "memoryTotalBytes": 34359738368,
+    "memoryUsedBytes": 9437184000,
+    "memoryFreeBytes": 24922554368,
+    "diskTotalBytes": 1024209543168,
+    "diskUsedBytes": 402110190592,
+    "diskFreeBytes": 622099353576,
+    "diskReadBytes": 567890123,
+    "diskWriteBytes": 543210987,
+    "network": {
+      "eth0_0": {
+        "speedbps": "1200000000",
+        "bytesReceived": "400000000",
+        "bytesSent": "450000000"
+      },
+      "eth1_1": {
+        "speedbps": "600000000",
+        "bytesReceived": "300000000",
+        "bytesSent": "350000000"
+      },
+      "wlan0_2": {
+        "speedbps": "350000000",
+        "bytesReceived": "250000000",
+        "bytesSent": "150000000"
+      },
+      "wlan1_3": {
+        "speedbps": "200000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "80000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host E",
+    "hostId": "5e6f7081-9203-1243-abcd-ef6789012345",
+    "cpuUsagePercent": 91.8,
+    "memoryTotalBytes": 68719476736,
+    "memoryUsedBytes": 64851834675,
+    "memoryFreeBytes": 3871542061,
+    "diskTotalBytes": 2048421087232,
+    "diskUsedBytes": 1748421087232,
+    "diskFreeBytes": 300000000000,
+    "diskReadBytes": 678901234,
+    "diskWriteBytes": 432109876,
+    "network": {
+      "eth0_0": {
+        "speedbps": "2000000000",
+        "bytesReceived": "1000000000",
+        "bytesSent": "900000000"
+      },
+      "eth1_1": {
+        "speedbps": "1500000000",
+        "bytesReceived": "800000000",
+        "bytesSent": "700000000"
+      },
+      "wlan0_2": {
+        "speedbps": "400000000",
+        "bytesReceived": "300000000",
+        "bytesSent": "250000000"
+      },
+      "wlan1_3": {
+        "speedbps": "250000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "150000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host F",
+    "hostId": "6f708192-0314-2354-abcd-ef7890123456",
+    "cpuUsagePercent": 12.4,
+    "memoryTotalBytes": 4294967296,
+    "memoryUsedBytes": 2147483648,
+    "memoryFreeBytes": 2147483648,
+    "diskTotalBytes": 128110190592,
+    "diskUsedBytes": 88110190592,
+    "diskFreeBytes": 40000000000,
+    "diskReadBytes": 789012345,
+    "diskWriteBytes": 321098765,
+    "network": {
+      "eth0_0": {
+        "speedbps": "300000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "50000000"
+      },
+      "eth1_1": {
+        "speedbps": "100000000",
+        "bytesReceived": "50000000",
+        "bytesSent": "20000000"
+      },
+      "wlan0_2": {
+        "speedbps": "100000000",
+        "bytesReceived": "200000000",
+        "bytesSent": "100000000"
+      },
+      "wlan1_3": {
+        "speedbps": "50000000",
+        "bytesReceived": "100000000",
+        "bytesSent": "50000000"
+      }
+    }
+  },
+  {
+    "hostName": "Host G",
+    "hostId": "70819203-1425-3465-abcd-ef8901234567",
+    "cpuUsagePercent": 47.9,
+    "memoryTotalBytes": 17179869184,
+    "memoryUsedBytes": 8589934592,
+    "memoryFreeBytes": 8589934592,
+    "diskTotalBytes": 512110190592,
+    "diskUsedBytes": 256055095296,
+    "diskFreeBytes": 256055095296,
+    "diskReadBytes": 890123456,
+    "diskWriteBytes": 210987654,
+    "network": {
+      "eth0_0": {
+        "speedbps": "1800000000",
+        "bytesReceived": "700000000",
+        "bytesSent": "650000000"
+      },
+      "eth1_1": {
+        "speedbps": "1200000000",
+        "bytesReceived": "500000000",
+        "bytesSent": "450000000"
+      },
+      "wlan0_2": {
+        "speedbps": "250000000",
+        "bytesReceived": "150000000",
+        "bytesSent": "100000000"
+      },
+      "wlan1_3": {
+        "speedbps": "150000000",
+        "bytesReceived": "120000000",
+        "bytesSent": "80000000"
+      }
+    }
+  }
+]
