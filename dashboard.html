@@ -7,9 +7,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/moment"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+  <script src="./dashboard.js" defer></script>
   <link rel="stylesheet" href="./dashboard.css" />
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
-
 </head>
 <body>
   <div class="sidebar">
@@ -19,10 +19,11 @@
       <a href="container.html">Container</a>
     </nav>
     <div class="sidebar-footer">
-      <button title="Notifications">🔔</button>
+      <button id="notificationsBtn" title="Notifications">🔔</button>
       <a href="dashboard.html" title="Home" class="icon-btn">🏠</a>
-      <button title="Profile">👤</button>
+      <button id="settingsBtn" title="Settings">⚙️</button>
     </div>
+    <ul id="alertList" class="alert-list"></ul>
   </div>
 
   <div class="main-content">
@@ -30,12 +31,22 @@
       <h1>Dashboard</h1>
       <input type="search" class="search" placeholder="Search" />
     </header>
-
+    <div class="row">
+    </div>
+    
     <div class="dashboard">
       <div class="row summary-section">
         <div class="summary-card">
-          <h3>Under Resourced</h3>
-          <p class="card-subtitle">Hosts & Containers approaching resource limits</p>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h3>Under Resourced</h3>
+              <p class="card-subtitle">Hosts &amp; Containers approaching resource limits</p>
+            </div>
+            <div class="filter-controls">
+              <input type="date" id="thresholdDateInput" />
+              <button id="thresholdFilterBtn" title="필터 조회">🔍</button>
+            </div>
+          </div>
           <table id="underResourcedTable">
             <thead>
               <tr><th>Name</th><th>CPU</th><th>Memory</th><th>Disk</th></tr>
@@ -43,14 +54,13 @@
             <tbody></tbody>
           </table>
         </div>
-        <div class="summary-card">
-          <h3>Speed Surge</h3>
-          <p class="card-subtitle">Network Speed Rankings of Host machines</p>
+
+        <div class="summary-card" style="display:none;">
+          <h3>Speed Surge Hosts</h3>
           <ul id="topSpeedHosts"></ul>
         </div>
-        <div class="summary-card">
-          <h3>Speed Surge</h3>
-          <p class="card-subtitle">Network Speed Rankings of Containers</p>
+        <div class="summary-card" style="display:none;">
+          <h3>Speed Surge Containers</h3>
           <ul id="topSpeedContainers"></ul>
         </div>
       </div>
@@ -91,6 +101,28 @@
       </div>
     </div>
   </div>
-  <script src="./dashboard.js"></script>
+
+  <div id="settingsPanel" class="settings-panel hidden">
+    <div class="card threshold-card">
+      <div class="card-header">
+        <h2>Threshold Settings</h2>
+      </div>
+      <div class="card-body threshold-form">
+        <div class="form-group">
+          <label for="cpuPercentInput">CPU</label>
+          <input type="number" id="cpuPercentInput" min="0" max="100" />
+        </div>
+        <div class="form-group">
+          <label for="memoryPercentInput">Memory</label>
+          <input type="number" id="memoryPercentInput" min="0" max="100" />
+        </div>
+        <div class="form-group">
+          <label for="diskPercentInput">Disk</label>
+          <input type="number" id="diskPercentInput" min="0" max="100" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-save" id="saveThresholdBtn">Save</button>
+    </div>
+  </div>
 </body>
 </html>
