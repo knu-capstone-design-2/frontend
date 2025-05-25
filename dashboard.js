@@ -1,5 +1,107 @@
 let hostChart, containerChart, netChart;
 let hostsData = []; 
+let alertSource = null;
+
+const settingsBtn      = document.getElementById('settingsBtn');
+const settingsPanel    = document.getElementById('settingsPanel');
+const settingsOverlay  = document.getElementById('settingsOverlay');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+document.getElementById('notificationsBtn')
+  .addEventListener('click', () => {
+    if (alertSource) return;  
+    alertSource = new EventSource('/api/metrics/threshold-alert');
+    alertSource.onmessage = e => {
+      const data = JSON.parse(e.data);
+      displayAlert(data);
+    };
+    alertSource.onerror = err => {
+      console.error('SSE error:', err);
+      alertSource.close();
+      alertSource = null;
+    };
+  });
+
+/**
+ * 들어온 알림을 화면에 표시
+ * @param {{targetId:string, metricName:string, value:string, timestamp:string}} data
+ */
+function displayAlert({ targetId, metricName, value, timestamp }) {
+  const ul = document.getElementById('alertList');
+  const li = document.createElement('li');
+  li.textContent = 
+    `${timestamp} — ${targetId} 의 ${metricName} 임계치 초과: ${value}`;
+  ul.prepend(li); 
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('./host.json')
+    .then(res => res.json())
+    .then(h => {
+      hostsData = h;
+      return fetch('./container.json');
+    })
+    .then(res => res.json())
+    .then(cont => {
+      renderSummary(hostsData, cont);
+      initTimeSeries('host',      'hostChart',      hostsData);
+      setupUsageToggles('host',   hostsData);
+      initTimeSeries('container', 'containerChart', cont);
+      setupUsageToggles('container', cont);
+      renderHostSelector(hostsData);
+      drawNetwork(hostsData[0]);
+      setupThresholdFilter();             
+    })
+    .catch(err => console.error('Data load error:', err));
+});
+
+/**
+ * 날짜별 임계치 초과 기록 필터링 기능 초기화
+ */
+function setupThresholdFilter() {
+  const filterBtn = document.getElementById('thresholdFilterBtn');
+  const dateInput = document.getElementById('thresholdDateInput');
+  filterBtn.addEventListener('click', async () => {
+    const date = dateInput.value;
+    if (!date) {
+      return alert('날짜를 선택해주세요.');
+    }
+    try {
+      const res = await fetch('/api/metrics/threshold-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date })
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const records = await res.json();
+      renderThresholdHistory(records);
+    } catch (e) {
+      console.error('필터 조회 오류:', e);
+      alert('조회 실패: ' + e.message);
+    }
+  });
+}
+
+/**
+ * 필터 조회 결과를 테이블에 렌더링
+ * @param {Array} records
+ */
+function renderThresholdHistory(records) {
+  const tbody = document.querySelector('#underResourcedTable tbody');
+  tbody.innerHTML = '';
+  records.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${new Date(r.timestamp).toLocaleString()}</td>
+      <td>${r.targetId}</td>
+      <td>${r.metricName}</td>
+      <td>${r.value}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
   fetch('./host.json')
@@ -235,3 +337,86 @@ function drawNetwork(host) {
     }
   });
 }
+
+// 페이지 로드 시 또는 패널 열릴 때: 저장된 임계값 불러와서 폼에 채우기
+async function loadThresholds() {
+  try {
+    const res = await fetch('/api/metrics/threshold-setting', { method: 'GET' });
+    if (!res.ok) throw new Error(res.statusText);
+    const { cpuPercent, memoryPercent, diskPercent, networkTraffic } = await res.json();
+    document.getElementById('cpuPercentInput').value      = cpuPercent;
+    document.getElementById('memoryPercentInput').value   = memoryPercent;
+    document.getElementById('diskPercentInput').value     = diskPercent;
+    document.getElementById('networkTrafficInput').value  = networkTraffic;
+  } catch (e) {
+    console.error('Threshold load error:', e);
+  }
+}
+
+// 버튼 클릭 시: 입력값 읽어서 서버에 저장하기
+async function saveThresholds() {
+  const payload = {
+    cpuPercent:     document.getElementById('cpuPercentInput').value,
+    memoryPercent:  document.getElementById('memoryPercentInput').value,
+    diskPercent:    document.getElementById('diskPercentInput').value,
+    networkTraffic: document.getElementById('networkTrafficInput').value
+  };
+  try {
+    const res = await fetch('/api/metrics/threshold-setting', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok) alert('저장 성공 👍');
+    else       alert('저장 실패: ' + (data.error || res.statusText));
+  } catch (e) {
+    console.error('Threshold save error:', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const settingsBtn   = document.getElementById('settingsBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const saveBtn       = document.getElementById('saveThresholdBtn');
+
+  settingsBtn.addEventListener('click', () => {
+    if (settingsPanel.classList.contains('hidden')) {
+      settingsPanel.classList.remove('hidden');
+      setTimeout(() => settingsPanel.classList.add('active'), 10);
+      loadThresholds(); 
+    } else {
+      settingsPanel.classList.remove('active');
+      settingsPanel.addEventListener('transitionend', () => {
+        settingsPanel.classList.add('hidden');
+      }, { once: true });
+    }
+  });
+
+  saveBtn.addEventListener('click', saveThresholds);
+});
+
+
+function openSettings() {
+  settingsOverlay.classList.remove('hidden');
+  setTimeout(() => settingsOverlay.classList.add('active'), 10);
+
+  settingsPanel.classList.remove('hidden');
+  setTimeout(() => settingsPanel.classList.add('active'), 10);
+  loadThresholds();
+}
+
+function closeSettings() {
+  settingsOverlay.classList.remove('active');
+  settingsPanel.classList.remove('active');
+
+  const hide = elem => elem.addEventListener('transitionend', () => elem.classList.add('hidden'), { once: true });
+  hide(settingsOverlay);
+  hide(settingsPanel);
+}
+
+settingsBtn.addEventListener('click', openSettings);
+closeSettingsBtn.addEventListener('click', closeSettings);
+settingsOverlay.addEventListener('click', closeSettings);
+saveBtn.addEventListener('click', saveThresholds);
+
