@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Usage Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment"></script>
+  <link rel="stylesheet" href="./dashboard.css" />
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">INTERDATA</div>
+    <nav>
+      <a href="host.html">Host Machine</a>
+      <a href="container.html">Container</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button title="Notifications">🔔</button>
+      <a href="dashboard.html" title="Home" class="icon-btn">🏠</a>
+      <button title="Profile">👤</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <header class="main-header">
+      <h1>Dashboard</h1>
+      <input type="search" class="search" placeholder="Search" />
+    </header>
+
+    <div class="dashboard">
+      <div class="row summary-section">
+        <div class="summary-card">
+          <h3>Under Resourced</h3>
+          <p class="card-subtitle">Hosts & Containers approaching resource limits</p>
+          <table id="underResourcedTable">
+            <thead>
+              <tr><th>Name</th><th>CPU</th><th>Memory</th><th>Disk</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="summary-card">
+          <h3>Speed Surge</h3>
+          <p class="card-subtitle">Network Speed Rankings of Host machines</p>
+          <ul id="topSpeedHosts"></ul>
+        </div>
+        <div class="summary-card">
+          <h3>Speed Surge</h3>
+          <p class="card-subtitle">Network Speed Rankings of Containers</p>
+          <ul id="topSpeedContainers"></ul>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <div class="header">
+            <h2>Host Machine Usage</h2>
+            <div class="toggle-buttons host">
+              <button class="toggle active" data-type="cpu">CPU</button>
+              <button class="toggle" data-type="memory">Memory</button>
+              <button class="toggle" data-type="disk">Disk</button>
+            </div>
+          </div>
+          <canvas id="hostChart"></canvas>
+        </div>
+        <div class="card">
+          <div class="header">
+            <h2>Container Usage</h2>
+            <div class="toggle-buttons container">
+              <button class="toggle active" data-type="cpu">CPU</button>
+              <button class="toggle" data-type="memory">Memory</button>
+              <button class="toggle" data-type="disk">Disk</button>
+            </div>
+          </div>
+          <canvas id="containerChart"></canvas>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <div class="header">
+            <h2>Network Traffic</h2>
+          </div>
+          <div id="networkHostSelector" class="host-selector"></div>
+          <canvas id="networkChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./dashboard.js"></script>
+</body>
+</html>
