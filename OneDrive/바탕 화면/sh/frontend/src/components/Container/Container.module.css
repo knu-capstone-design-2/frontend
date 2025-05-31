@@ -1,0 +1,301 @@
+/* 전체 레이아웃 */
+.wrapper {
+  display: flex;
+  height: 100vh;
+  background: #f4f6f8;
+  font-family: 'Inter', sans-serif;
+}
+
+/* 사이드바 */
+.sidebar {
+  width: 220px;
+  background: #1a1a2e;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  height: 100vh;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+nav a {
+  display: block;
+  text-decoration: none;
+  color: #fff;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+nav a:hover,
+nav a.active {
+  background: #16213e;
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-around;
+  padding-top: 20px;
+}
+
+.footer button,
+.footer a {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.footer button:hover,
+.footer a:hover {
+  color: #ccc;
+}
+
+/* 메인 영역 */
+.main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* 헤더 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  color: #333;
+  font-size: 24px;
+}
+
+.search {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 500px;
+}
+
+/* 대시보드 */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.row {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.summary-section {
+  display: flex;
+  gap: 20px;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  flex: 1;
+  padding: 20px;
+  position: relative;
+}
+
+.summary-card h3 {
+  color: #333;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.table-wrapper {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.summary-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.summary-card th,
+.summary-card td {
+  padding: 8px;
+  text-align: left;
+}
+
+.summary-card th {
+  border-bottom: 2px solid #eee;
+}
+
+/* 게이지 */
+.gauge-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.gauge-container canvas {
+  width: 170px !important;
+  height: 170px !important;
+  margin: 0 !important;
+}
+
+/* 카드 */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  flex: 1;
+  padding: 20px;
+}
+
+.card h2 {
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 토글 */
+.toggle-buttons {
+  background: #f0f0f0;
+  border-radius: 999px;
+  display: flex;
+  padding: 5px;
+}
+
+.toggle {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.3s;
+  color: #7d7d7d;
+}
+
+.toggle.active {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* 공통 차트 */
+canvas {
+  height: auto !important;
+  margin-top: 10px;
+  width: 100% !important;
+}
+
+/* 컨테이너 선택 버튼 */
+.container-selector {
+  margin-bottom: 10px;
+}
+
+.container-selector button {
+  background: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 8px;
+  padding: 6px 12px;
+}
+
+.container-selector button.active {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* 설정 패널 */
+.overlay {
+  backdrop-filter: blur(4px);
+  background: rgba(0,0,0,0.4);
+  bottom: 0;
+  height: 100%;
+  left: 0;
+  opacity: 0;
+  position: fixed;
+  transition: opacity 0.3s ease;
+  width: 100%;
+  z-index: 999;
+}
+
+.overlay.active {
+  opacity: 1;
+}
+
+.settingsPanel {
+  background: #fff;
+  border-left: 4px solid #16213e;
+  border-bottom-left-radius: 12px;
+  border-top-left-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  width: 320px;
+  z-index: 1000;
+}
+
+.settingsPanel.active {
+  transform: translateX(0);
+}
+
+.thresholdForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.thresholdForm label {
+  font-size: 14px;
+  color: #333;
+}
+
+.thresholdForm input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.btnSave {
+  background: #4CAF50;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 10px;
+  padding: 10px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnSave:hover {
+  background: #43A047;
+}
