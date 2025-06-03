@@ -110,49 +110,67 @@ function Host() {
   };
 
   const renderUsageChart = () => {
-    if (!hostChartRef.current) return;
-    const ctx = hostChartRef.current.getContext('2d');
-    hostChartInstance.current?.destroy();
+  if (!hostChartRef.current) return;
+  const ctx = hostChartRef.current.getContext('2d');
+  hostChartInstance.current?.destroy();
 
-    const timestamps = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000));
-    const data = {
-      cpu: Array(30).fill(selectedHost.cpuUsagePercent),
-      memory: Array(30).fill((selectedHost.memoryUsedBytes / selectedHost.memoryTotalBytes) * 100),
-      disk: Array(30).fill((selectedHost.diskUsedBytes / selectedHost.diskTotalBytes) * 100)
-    };
-
-    hostChartInstance.current = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: timestamps,
-        datasets: [{
-          label: activeMetric.toUpperCase(),
-          data: data[activeMetric],
-          borderColor: activeMetric === 'cpu' ? '#ff6384' : activeMetric === 'memory' ? '#36a2eb' : '#ffce56',
-          fill: false
-        }]
-      },
-      options: {
-        plugins: {
-          legend: {
-            display: true,
-            labels: {
-              usePointStyle: true,
-              pointStyle: 'circle',
-              boxWidth: 8,
-              boxHeight: 8,
-              padding: 12
-            }
-          }
-        },
-        elements: { point: { radius: 2, hoverRadius: 4 } },
-        scales: {
-          x: { type: 'time', time: { unit: 'minute' } },
-          y: { beginAtZero: true }
-        }
-      }
-    });
+  const timestamps = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000));
+  const data = {
+    cpu: Array(30).fill(selectedHost.cpuUsagePercent),
+    memory: Array(30).fill((selectedHost.memoryUsedBytes / selectedHost.memoryTotalBytes) * 100),
+    disk: Array(30).fill((selectedHost.diskUsedBytes / selectedHost.diskTotalBytes) * 100)
   };
+
+  hostChartInstance.current = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: timestamps,
+      datasets: [
+        { label: 'CPU', data: data.cpu, borderColor: '#ff6384' },
+        { label: 'Memory', data: data.memory, borderColor: '#36a2eb' },
+        { label: 'Disk', data: data.disk, borderColor: '#ffce56' }
+      ]
+    },
+    options: {
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 8,
+            boxHeight: 8,
+            padding: 12,
+          },
+          generateLabels(chart) {
+            const datasets = chart.data.datasets;
+            return datasets.map((ds, i) => ({
+              text: ds.label,
+              fillStyle: ds.borderColor,
+              hidden: false,
+              lineCap: 'butt',
+              lineDash: [],
+              lineDashOffset: 0,
+              lineJoin: 'miter',
+              strokeStyle: ds.borderColor,
+              pointStyle: 'circle',
+              datasetIndex: i
+            }));
+          }
+        }
+      },
+      elements: {
+        point: { radius: 2, hoverRadius: 4 }
+      },
+      scales: {
+        x: { type: 'time', time: { unit: 'minute' } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+};
+
+
 
   const renderNetworkChart = () => {
     if (!networkChartRef.current) return;

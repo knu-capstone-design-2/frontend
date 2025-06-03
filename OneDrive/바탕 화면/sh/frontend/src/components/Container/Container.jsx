@@ -1,4 +1,4 @@
-// ✅ Container.jsx – Host.jsx 구조 통일 + 사이드바 선택/스크롤 문제 수정본
+// ✅ Container.jsx – Host.jsx 구조 그대로, hostData → containerData 로 수정한 버전
 import { useEffect, useRef, useState } from 'react';
 import styles from './Container.module.css';
 import Chart from 'chart.js/auto';
@@ -26,6 +26,8 @@ function Container() {
   const memGaugeRef = useRef(null);
   const diskGaugeRef = useRef(null);
 
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     renderUsageChart();
     renderNetworkChart();
@@ -33,12 +35,17 @@ function Container() {
   }, [selectedContainer]);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     updateMetric();
   }, [activeMetric]);
 
   const updateMetric = () => {
     if (!usageChartInstance.current) return;
-    usageChartInstance.current.data.datasets.forEach(ds => {
+    const datasets = usageChartInstance.current.data.datasets;
+    datasets.forEach(ds => {
       ds.hidden = ds.label.toLowerCase() !== activeMetric;
     });
     usageChartInstance.current.update();
@@ -125,19 +132,42 @@ function Container() {
       data: {
         labels: timestamps,
         datasets: [
-          { label: 'CPU', data: data.cpu, borderColor: '#ff6384', hidden: activeMetric !== 'cpu' },
-          { label: 'Memory', data: data.memory, borderColor: '#36a2eb', hidden: activeMetric !== 'memory' },
-          { label: 'Disk', data: data.disk, borderColor: '#ffce56', hidden: activeMetric !== 'disk' }
+          { label: 'CPU', data: data.cpu, borderColor: '#ff6384' },
+          { label: 'Memory', data: data.memory, borderColor: '#36a2eb' },
+          { label: 'Disk', data: data.disk, borderColor: '#ffce56' }
         ]
       },
       options: {
         plugins: {
           legend: {
             display: true,
-            labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 12 }
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'circle',
+              boxWidth: 8,
+              boxHeight: 8,
+              padding: 12,
+            },
+            generateLabels(chart) {
+              const datasets = chart.data.datasets;
+              return datasets.map((ds, i) => ({
+                text: ds.label,
+                fillStyle: ds.borderColor,
+                hidden: false,
+                lineCap: 'butt',
+                lineDash: [],
+                lineDashOffset: 0,
+                lineJoin: 'miter',
+                strokeStyle: ds.borderColor,
+                pointStyle: 'circle',
+                datasetIndex: i
+              }));
+            }
           }
         },
-        elements: { point: { radius: 2, hoverRadius: 4 } },
+        elements: {
+          point: { radius: 2, hoverRadius: 4 }
+        },
         scales: {
           x: { type: 'time', time: { unit: 'minute' } },
           y: { beginAtZero: true }
@@ -236,22 +266,6 @@ function Container() {
             <div className={styles.card}>
               <div className={styles.header}><h2>Network Traffic</h2></div>
               <canvas ref={networkChartRef}></canvas>
-            </div>
-          </div>
-        </div>
-
-        {/* 설정 패널 */}
-        <div className={`${styles.overlay} ${showSettings ? styles.active : ''}`} onClick={() => setShowSettings(false)}></div>
-        <div className={`${styles.settingsPanel} ${showSettings ? styles.active : ''}`}>
-          <h2>Threshold Settings</h2>
-          <div className={styles.thresholdForm}>
-            <label>CPU<input type="number" value={thresholds.cpuPercent} onChange={e => setThresholds({ ...thresholds, cpuPercent: e.target.value })} /></label>
-            <label>Memory<input type="number" value={thresholds.memoryPercent} onChange={e => setThresholds({ ...thresholds, memoryPercent: e.target.value })} /></label>
-            <label>Disk<input type="number" value={thresholds.diskPercent} onChange={e => setThresholds({ ...thresholds, diskPercent: e.target.value })} /></label>
-            <label>Network<input type="number" value={thresholds.networkTraffic} onChange={e => setThresholds({ ...thresholds, networkTraffic: e.target.value })} /></label>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-              <button onClick={() => setShowSettings(false)}>닫기</button>
-              <button className={styles.btnSave}>Save</button>
             </div>
           </div>
         </div>

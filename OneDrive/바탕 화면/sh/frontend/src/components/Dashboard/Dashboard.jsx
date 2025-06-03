@@ -21,6 +21,8 @@ function Dashboard() {
   const hostChartInstance = useRef(null);
   const containerChartInstance = useRef(null);
   const networkChartInstance = useRef(null);
+  const [liveMetrics, setLiveMetrics] = useState(null);
+
 
   useEffect(() => {
     renderSummary();
@@ -28,8 +30,66 @@ function Dashboard() {
     initChart('container', containerChartRef.current, containerData);
     renderHostSelector();
     drawNetwork(hostData[0]);
-    loadThresholds();
+    setupThresholdSSE();
+    setupWebSocket();
   }, []);
+
+  const setupThresholdSSE = () => {
+  const eventSource = new EventSource('/api/metrics/threshold-alert');
+
+  eventSource.onopen = () => {
+    console.log('✅ Threshold SSE 연결됨');
+  };
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📥 Threshold 실시간 데이터:', data);
+
+      // state 갱신
+      setThresholds(data);
+    } catch (e) {
+      console.error('❌ Threshold SSE 파싱 오류:', e);
+    }
+  };
+
+  eventSource.onerror = (e) => {
+    console.error('❌ Threshold SSE 에러:', e);
+    eventSource.close();
+  };
+};
+
+  const setupWebSocket = () => {
+  const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+
+  socket.onopen = () => {
+    console.log('✅ WebSocket 연결됨');
+    // 필요하다면 서버에게 구독 요청 등 전송
+    // socket.send(JSON.stringify({ type: 'subscribe', target: 'metrics' }));
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      // 예시: { type: 'metrics', cpu: 72, memory: 63, disk: 45, network: {...} }
+      if (data.type === 'metrics') {
+        updateCharts(data);
+      }
+    } catch (e) {
+      console.error('웹소켓 데이터 파싱 오류:', e);
+    }
+  };
+
+  socket.onerror = (e) => {
+    console.error('❌ WebSocket 에러', e);
+  };
+
+  socket.onclose = () => {
+    console.warn('🔌 WebSocket 연결 종료됨');
+    // 재연결 시도 가능
+  };
+};
 
   const renderSummary = () => {
     const combined = [...hostData, ...containerData].map(item => ({
@@ -71,6 +131,44 @@ function Dashboard() {
     if (type === 'host') hostChartInstance.current = chart;
     if (type === 'container') containerChartInstance.current = chart;
   };
+
+  const updateCharts = (liveData) => {
+  const now = new Date();
+
+  // Host Chart
+  if (hostChartInstance.current) {
+    const chart = hostChartInstance.current;
+    chart.data.labels.push(now);
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.push(liveData.cpu);    // CPU
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.push(liveData.memory); // Memory
+    chart.data.datasets[1].data.shift();
+    chart.data.datasets[2].data.push(liveData.disk);   // Disk
+    chart.data.datasets[2].data.shift();
+    chart.update();
+  }
+
+  // Network Chart
+  if (networkChartInstance.current && liveData.network) {
+    const chart = networkChartInstance.current;
+    chart.data.labels.push(now);
+    chart.data.labels.shift();
+
+    const ifaceNames = Object.keys(liveData.network);
+    const recvSentData = ifaceNames.flatMap((iface, i) => [
+      liveData.network[iface].bytesReceived,
+      liveData.network[iface].bytesSent
+    ]);
+
+    chart.data.datasets.forEach((ds, i) => {
+      ds.data.push(recvSentData[i]);
+      ds.data.shift();
+    });
+
+    chart.update();
+  }
+};
 
   const renderHostSelector = () => {
     const sel = document.getElementById('networkHostSelector');
