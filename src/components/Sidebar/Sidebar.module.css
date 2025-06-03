@@ -1,0 +1,61 @@
+.sidebar {
+  width: 220px;
+  background: #1a1a2e;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  height: 100vh;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+nav a {
+  display: block;
+  text-decoration: none;
+  color: #fff;
+  padding: 10px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+nav a:hover,
+nav a.active {
+  background: #16213e;
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-around;
+  align-items: center; /* ✅ 가운데 정렬 */
+  padding-top: 20px;
+}
+
+.footer button,
+.footer a {
+  all: unset; /* ✅ 기본 스타일 제거 (button, a 모두 일관) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.footer button:hover,
+.footer a:hover {
+  background: #16213e;
+  color: #ccc;
+}

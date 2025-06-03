@@ -1,0 +1,243 @@
+/* ✅ Dashboard.module.css – 슬라이드 설정 패널 포함 전체 구성 */
+
+.dashboardWrapper {
+  display: flex;
+  height: 100vh;
+  background: #f4f6f8;
+  font-family: 'Inter', sans-serif;
+}
+
+.mainContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  position: relative;
+}
+
+.mainHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.mainHeader h1 {
+  font-size: 24px;
+  color: #333;
+}
+
+.search {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 500px;
+}
+
+.searchButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background-color: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.searchButton:hover {
+  background-color: #357ab8;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.row {
+  display: flex;
+  gap: 40px;
+}
+
+.summarySection {
+  gap: 20px;
+}
+
+.summaryCard {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cardSubtitle {
+  font-size: 14px;
+  color: #666;
+}
+
+.filterControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dateInput {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+.dateInput:focus {
+  outline: none;
+  border-color: #888;
+}
+
+.summaryCard table {
+  width: 100%;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+
+.summaryCard th,
+.summaryCard td {
+  text-align: left;
+  padding: 8px;
+}
+
+.summaryCard thead {
+  background: #fafafa;
+}
+
+.card {
+  flex: 1;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  font-size: 18px;
+  color: #333;
+}
+
+canvas {
+  width: 100% !important;
+  height: auto !important;
+  margin-top: 10px;
+}
+
+.host-selector {
+  margin-bottom: 10px;
+}
+
+.host-selector button {
+  background: #f0f0f0;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.host-selector button.active {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* 🔧 설정 패널 (슬라이드 스타일) */
+.settingsPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100%;
+  background: #fff;
+  border-left: 4px solid #16213e;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.settingsPanel.active {
+  transform: translateX(0);
+}
+
+.thresholdForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.thresholdForm label {
+  color: #555;
+  font-weight: 600;
+}
+
+.thresholdForm input {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.btnSave {
+  background: #4CAF50;
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.btnSave:hover {
+  background: #43A047;
+}
+
+/* 어두운 배경 overlay */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 999;
+}
+
+.overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
