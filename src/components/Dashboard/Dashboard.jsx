@@ -1,4 +1,4 @@
-// Dashboard.jsx
+// 수정된 Dashboard.jsx – Container 차트 정상 반영 포함
 import { useEffect, useRef, useState } from 'react';
 import styles from './Dashboard.module.css';
 import Chart from 'chart.js/auto';
@@ -13,18 +13,17 @@ function Dashboard() {
   const [selectedDate, setSelectedDate] = useState('');
   const [summaryRows, setSummaryRows] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [liveMetrics, setLiveMetrics] = useState(null);
 
   const hostChartRef = useRef(null);
   const containerChartRef = useRef(null);
   const networkChartRef = useRef(null);
-
   const hostChartInstance = useRef(null);
   const containerChartInstance = useRef(null);
   const networkChartInstance = useRef(null);
-  const [liveMetrics, setLiveMetrics] = useState(null);
-
 
   useEffect(() => {
+    console.log('🧪 containerData:', containerData);
     renderSummary();
     initChart('host', hostChartRef.current, hostData);
     initChart('container', containerChartRef.current, containerData);
@@ -35,61 +34,63 @@ function Dashboard() {
   }, []);
 
   const setupThresholdSSE = () => {
-  const eventSource = new EventSource('/api/metrics/threshold-alert');
-
-  eventSource.onopen = () => {
-    console.log('✅ Threshold SSE 연결됨');
+    const eventSource = new EventSource('/api/metrics/threshold-alert');
+    eventSource.onopen = () => console.log('✅ Threshold SSE 연결됨');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📥 Threshold 실시간 데이터:', data);
+        setThresholds(prev => ({ ...prev, [data.metricName + 'Percent']: parseFloat(data.value) }));
+      } catch (e) {
+        console.error('❌ Threshold SSE 파싱 오류:', e);
+      }
+    };
+    eventSource.onerror = (e) => {
+      console.error('❌ Threshold SSE 에러:', e);
+      eventSource.close();
+    };
   };
-
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('📥 Threshold 실시간 데이터:', data);
-
-      // state 갱신
-      setThresholds(data);
-    } catch (e) {
-      console.error('❌ Threshold SSE 파싱 오류:', e);
-    }
-  };
-
-  eventSource.onerror = (e) => {
-    console.error('❌ Threshold SSE 에러:', e);
-    eventSource.close();
-  };
-};
 
   const setupWebSocket = () => {
-  const socket = new WebSocket(import.meta.env.VITE_WS_URL);
-
-  socket.onopen = () => {
-    console.log('✅ WebSocket 연결됨');
-    // 필요하다면 서버에게 구독 요청 등 전송
-    // socket.send(JSON.stringify({ type: 'subscribe', target: 'metrics' }));
+    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+    socket.onopen = () => console.log('✅ WebSocket 연결됨');
+    socket.onmessage = (event) => {
+      console.log('📨 받은 메시지:', event.data);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'metrics') {
+          console.log('📡 실시간 메트릭 도착:', data);
+          setLiveMetrics(data);
+          updateCharts(data);
+        } else if (data.type === 'container') {
+          updateContainerChart(data);
+        }
+      } catch (e) {
+        console.error('웹소켓 데이터 파싱 오류:', e);
+      }
+    };
+    socket.onerror = (e) => console.error('❌ WebSocket 에러', e);
+    socket.onclose = () => console.warn('🔌 WebSocket 연결 종료됨');
   };
 
-  socket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-
-      // 예시: { type: 'metrics', cpu: 72, memory: 63, disk: 45, network: {...} }
-      if (data.type === 'metrics') {
-        updateCharts(data);
-      }
-    } catch (e) {
-      console.error('웹소켓 데이터 파싱 오류:', e);
+  const updateContainerChart = (data) => {
+    console.log('📊 컨테이너 차트 업데이트 시작:', data);
+    const now = new Date();
+    if (containerChartInstance.current) {
+      const chart = containerChartInstance.current;
+      chart.data.labels.push(now);
+      chart.data.labels.shift();
+      chart.data.datasets[0].data.push(data.cpuUsagePercent);
+      chart.data.datasets[0].data.shift();
+      const memoryPercent = data.memoryUsedBytes ? (data.memoryUsedBytes / (2 * 1024 * 1024 * 1024)) * 100 : 0;
+      chart.data.datasets[1].data.push(memoryPercent);
+      chart.data.datasets[1].data.shift();
+      const diskDelta = (data.diskReadBytesDelta ?? 0) + (data.diskWriteBytesDelta ?? 0);
+      chart.data.datasets[2].data.push(diskDelta / 100);
+      chart.data.datasets[2].data.shift();
+      chart.update();
     }
   };
-
-  socket.onerror = (e) => {
-    console.error('❌ WebSocket 에러', e);
-  };
-
-  socket.onclose = () => {
-    console.warn('🔌 WebSocket 연결 종료됨');
-    // 재연결 시도 가능
-  };
-};
 
   const renderSummary = () => {
     const combined = [...hostData, ...containerData].map(item => ({
@@ -110,7 +111,8 @@ function Dashboard() {
     if (type === 'host' && hostChartInstance.current) hostChartInstance.current.destroy();
     if (type === 'container' && containerChartInstance.current) containerChartInstance.current.destroy();
 
-    const usage = data[0];
+    const usage = data[0] ?? { cpuUsagePercent: 0, memoryUsedBytes: 0, memoryTotalBytes: 1, diskUsedBytes: 0, diskTotalBytes: 1 };
+
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -131,44 +133,6 @@ function Dashboard() {
     if (type === 'host') hostChartInstance.current = chart;
     if (type === 'container') containerChartInstance.current = chart;
   };
-
-  const updateCharts = (liveData) => {
-  const now = new Date();
-
-  // Host Chart
-  if (hostChartInstance.current) {
-    const chart = hostChartInstance.current;
-    chart.data.labels.push(now);
-    chart.data.labels.shift();
-    chart.data.datasets[0].data.push(liveData.cpu);    // CPU
-    chart.data.datasets[0].data.shift();
-    chart.data.datasets[1].data.push(liveData.memory); // Memory
-    chart.data.datasets[1].data.shift();
-    chart.data.datasets[2].data.push(liveData.disk);   // Disk
-    chart.data.datasets[2].data.shift();
-    chart.update();
-  }
-
-  // Network Chart
-  if (networkChartInstance.current && liveData.network) {
-    const chart = networkChartInstance.current;
-    chart.data.labels.push(now);
-    chart.data.labels.shift();
-
-    const ifaceNames = Object.keys(liveData.network);
-    const recvSentData = ifaceNames.flatMap((iface, i) => [
-      liveData.network[iface].bytesReceived,
-      liveData.network[iface].bytesSent
-    ]);
-
-    chart.data.datasets.forEach((ds, i) => {
-      ds.data.push(recvSentData[i]);
-      ds.data.shift();
-    });
-
-    chart.update();
-  }
-};
 
   const renderHostSelector = () => {
     const sel = document.getElementById('networkHostSelector');
@@ -191,13 +155,11 @@ function Dashboard() {
     if (!networkChartRef.current) return;
     const ctx = networkChartRef.current.getContext('2d');
     networkChartInstance.current?.destroy();
-
     const timestamps = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000));
     const datasets = Object.entries(host.network).flatMap(([iface, val]) => [
       { label: `${iface} Recv`, data: Array(30).fill(Number(val.bytesReceived)), borderColor: '#4bc0c0' },
       { label: `${iface} Sent`, data: Array(30).fill(Number(val.bytesSent)), borderColor: '#9966ff' }
     ]);
-
     networkChartInstance.current = new Chart(ctx, {
       type: 'line',
       data: { labels: timestamps, datasets },
@@ -209,46 +171,27 @@ function Dashboard() {
     });
   };
 
-  const loadThresholds = async () => {
-    try {
-      const res = await fetch('/api/metrics/threshold-setting');
-      const json = await res.json();
-      setThresholds(json);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const saveThresholds = async () => {
-    try {
-      const res = await fetch('/api/metrics/threshold-setting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(thresholds)
-      });
-      if (!res.ok) throw new Error('Failed to save');
-      alert('저장 성공 👍');
-    } catch (e) {
-      console.error(e);
-      alert('저장 실패: ' + e.message);
-    }
-  };
-
   return (
     <div className={styles.dashboardWrapper}>
       <Sidebar onSettingsClick={() => setShowSettings(true)} />
       <main className={styles.mainContent}>
         <header className={styles.mainHeader}>
           <h1>Dashboard</h1>
-          <input
-            type="search"
-            className={styles.search}
-            placeholder="Search"
-          />
+          <input type="search" className={styles.search} placeholder="Search" />
         </header>
 
+        <div className={styles.thresholdSummary}>
+          <p>⚙️ 현재 임계치 - CPU: {thresholds.cpuPercent}%, Mem: {thresholds.memoryPercent}%, Disk: {thresholds.diskPercent}%, Net: {thresholds.networkTraffic}</p>
+        </div>
+
+        {liveMetrics && (
+          <div className={styles.liveMetricsBanner}>
+            📈 실시간 메트릭 → CPU: {liveMetrics.cpu}%, Mem: {liveMetrics.memory}%, Disk: {liveMetrics.disk}%
+          </div>
+        )}
+
         <div className={styles.dashboard}>
-          <div className={`${styles.row} ${styles.summarySection}`}>            
+          <div className={`${styles.row} ${styles.summarySection}`}>
             <div className={styles.summaryCard}>
               <div className={styles.cardHeader}>
                 <div>
@@ -256,16 +199,8 @@ function Dashboard() {
                   <p className={styles.cardSubtitle}>Hosts & Containers approaching resource limits</p>
                 </div>
                 <div className={styles.filterControls}>
-                  <input
-                    type="date"
-                    className={styles.dateInput} 
-                    value={selectedDate} 
-                    onChange={e => setSelectedDate(e.target.value)}
-                  />
-                  <button
-                    className={styles.searchButton}
-                    onClick={renderSummary}
-                  >🔍</button>
+                  <input type="date" className={styles.dateInput} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+                  <button className={styles.searchButton} onClick={renderSummary}>🔍</button>
                 </div>
               </div>
               <table>
@@ -286,7 +221,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Host & Container Charts */}
           <div className={styles.row}>
             <div className={styles.card}>
               <div className={styles.header}><h2>Host Machine Usage</h2></div>
@@ -298,28 +232,11 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Network Traffic */}
           <div className={styles.row}>
             <div className={styles.card}>
               <div className={styles.header}><h2>Network Traffic</h2></div>
               <div id="networkHostSelector" className="host-selector" />
               <canvas ref={networkChartRef} />
-            </div>
-          </div>
-        </div>
-
-        {/* Settings Panel */}
-        <div className={`${styles.overlay} ${showSettings ? styles.active : ''}`} onClick={() => setShowSettings(false)} />
-        <div className={`${styles.settingsPanel} ${showSettings ? styles.active : ''}`}>
-          <h2>Threshold Settings</h2>
-          <div className={styles.thresholdForm}>
-            <label>CPU<input type="number" value={thresholds.cpuPercent} onChange={e => setThresholds({ ...thresholds, cpuPercent: e.target.value })} /></label>
-            <label>Memory<input type="number" value={thresholds.memoryPercent} onChange={e => setThresholds({ ...thresholds, memoryPercent: e.target.value })} /></label>
-            <label>Disk<input type="number" value={thresholds.diskPercent} onChange={e => setThresholds({ ...thresholds, diskPercent: e.target.value })} /></label>
-            <label>Network<input type="number" value={thresholds.networkTraffic} onChange={e => setThresholds({ ...thresholds, networkTraffic: e.target.value })} /></label>
-            <div className={styles.settingsButtons}>  
-              <button onClick={() => setShowSettings(false)}>닫기</button>
-              <button className={styles.btnSave} onClick={saveThresholds}>Save</button>
             </div>
           </div>
         </div>

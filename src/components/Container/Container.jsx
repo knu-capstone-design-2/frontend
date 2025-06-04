@@ -1,4 +1,4 @@
-// ✅ Container.jsx – Host.jsx 구조 그대로, hostData → containerData 로 수정한 버전
+// ✅ Container.jsx – 백엔드 SSE 반영 전체 버전
 import { useEffect, useRef, useState } from 'react';
 import styles from './Container.module.css';
 import Chart from 'chart.js/auto';
@@ -25,7 +25,6 @@ function Container() {
   const cpuGaugeRef = useRef(null);
   const memGaugeRef = useRef(null);
   const diskGaugeRef = useRef(null);
-
   const isFirstRender = useRef(true);
 
   useEffect(() => {
@@ -37,10 +36,49 @@ function Container() {
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      setupContainerSSE();
       return;
     }
     updateMetric();
   }, [activeMetric]);
+
+  const setupContainerSSE = () => {
+    const eventSource = new EventSource('/api/metrics/threshold-alert');
+    eventSource.onopen = () => console.log('✅ Container SSE 연결됨');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📥 Container 실시간 데이터:', data);
+
+        if (!data.targetId || data.targetId !== selectedContainer.containerName) return;
+
+        const value = parseFloat(data.value);
+        const now = new Date();
+        if (usageChartInstance.current) {
+          const chart = usageChartInstance.current;
+          chart.data.labels.push(now);
+          chart.data.labels.shift();
+          if (data.metricName === 'cpu') {
+            chart.data.datasets[0].data.push(value);
+            chart.data.datasets[0].data.shift();
+          } else if (data.metricName === 'memory') {
+            chart.data.datasets[1].data.push(value);
+            chart.data.datasets[1].data.shift();
+          } else if (data.metricName === 'disk') {
+            chart.data.datasets[2].data.push(value);
+            chart.data.datasets[2].data.shift();
+          }
+          chart.update();
+        }
+      } catch (e) {
+        console.error('❌ Container SSE 파싱 오류:', e);
+      }
+    };
+    eventSource.onerror = (e) => {
+      console.error('❌ Container SSE 에러:', e);
+      eventSource.close();
+    };
+  };
 
   const updateMetric = () => {
     if (!usageChartInstance.current) return;
@@ -154,10 +192,6 @@ function Container() {
                 text: ds.label,
                 fillStyle: ds.borderColor,
                 hidden: false,
-                lineCap: 'butt',
-                lineDash: [],
-                lineDashOffset: 0,
-                lineJoin: 'miter',
                 strokeStyle: ds.borderColor,
                 pointStyle: 'circle',
                 datasetIndex: i
@@ -165,9 +199,7 @@ function Container() {
             }
           }
         },
-        elements: {
-          point: { radius: 2, hoverRadius: 4 }
-        },
+        elements: { point: { radius: 2, hoverRadius: 4 } },
         scales: {
           x: { type: 'time', time: { unit: 'minute' } },
           y: { beginAtZero: true }
