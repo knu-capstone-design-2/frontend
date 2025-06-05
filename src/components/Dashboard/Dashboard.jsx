@@ -1,4 +1,3 @@
-// 수정된 Dashboard.jsx – Container 차트 정상 반영 포함
 import { useEffect, useRef, useState } from 'react';
 import styles from './Dashboard.module.css';
 import Chart from 'chart.js/auto';
@@ -23,23 +22,22 @@ function Dashboard() {
   const networkChartInstance = useRef(null);
 
   useEffect(() => {
-    console.log('🧪 containerData:', containerData);
-    renderSummary();
-    initChart('host', hostChartRef.current, hostData);
-    initChart('container', containerChartRef.current, containerData);
-    renderHostSelector();
-    drawNetwork(hostData[0]);
-    setupThresholdSSE();
-    setupWebSocket();
+    const timeout = setTimeout(() => {
+      initChart('host', hostChartRef.current, hostData);
+      initChart('container', containerChartRef.current, containerData);
+      renderHostSelector();
+      drawNetwork(hostData[0]);
+      setupThresholdSSE();
+      setupWebSocket();
+    }, 300);
+    return () => clearTimeout(timeout);
   }, []);
 
   const setupThresholdSSE = () => {
     const eventSource = new EventSource('/api/metrics/threshold-alert');
-    eventSource.onopen = () => console.log('✅ Threshold SSE 연결됨');
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('📥 Threshold 실시간 데이터:', data);
         setThresholds(prev => ({ ...prev, [data.metricName + 'Percent']: parseFloat(data.value) }));
       } catch (e) {
         console.error('❌ Threshold SSE 파싱 오류:', e);
@@ -55,16 +53,13 @@ function Dashboard() {
     const socket = new WebSocket(import.meta.env.VITE_WS_URL);
     socket.onopen = () => console.log('✅ WebSocket 연결됨');
     socket.onmessage = (event) => {
-      console.log('📨 받은 메시지:', event.data);
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'metrics') {
-          console.log('📡 실시간 메트릭 도착:', data);
-          setLiveMetrics(data);
-          updateCharts(data);
-        } else if (data.type === 'container') {
-          updateContainerChart(data);
-        }
+        if (data.type === 'container') updateContainerChart(data);
+        if (data.cpuUsagePercent !== undefined) updateHostChart(data);
+        if (data.networkDelta) drawNetworkLive(data.networkDelta);
+        if (data.hostId || data.containerId) updateSummary(data);
+        setLiveMetrics(data);
       } catch (e) {
         console.error('웹소켓 데이터 파싱 오류:', e);
       }
@@ -73,46 +68,61 @@ function Dashboard() {
     socket.onclose = () => console.warn('🔌 WebSocket 연결 종료됨');
   };
 
-  const updateContainerChart = (data) => {
-    console.log('📊 컨테이너 차트 업데이트 시작:', data);
-    const now = new Date();
-    if (containerChartInstance.current) {
-      const chart = containerChartInstance.current;
-      chart.data.labels.push(now);
-      chart.data.labels.shift();
-      chart.data.datasets[0].data.push(data.cpuUsagePercent);
-      chart.data.datasets[0].data.shift();
-      const memoryPercent = data.memoryUsedBytes ? (data.memoryUsedBytes / (2 * 1024 * 1024 * 1024)) * 100 : 0;
-      chart.data.datasets[1].data.push(memoryPercent);
-      chart.data.datasets[1].data.shift();
-      const diskDelta = (data.diskReadBytesDelta ?? 0) + (data.diskWriteBytesDelta ?? 0);
-      chart.data.datasets[2].data.push(diskDelta / 100);
-      chart.data.datasets[2].data.shift();
-      chart.update();
-    }
-  };
+  function updateHostChart(data) {
+    const chart = hostChartInstance.current;
+    if (!chart) return;
 
-  const renderSummary = () => {
-    const combined = [...hostData, ...containerData].map(item => ({
-      name: item.hostName || item.containerName,
-      cpu: item.cpuUsagePercent,
-      memory: (item.memoryUsedBytes / item.memoryTotalBytes) * 100,
-      disk: item.diskTotalBytes
-        ? (item.diskUsedBytes / item.diskTotalBytes) * 100
-        : ((item.diskReadBytes + item.diskWriteBytes) / (item.diskReadBytes + item.diskWriteBytes + 1)) * 100
-    }));
-    const top = combined.sort((a, b) => b.cpu - a.cpu).slice(0, 3);
-    setSummaryRows(top);
+    const now = new Date();
+    const cpu = parseFloat(data.cpuUsagePercent);
+    const memoryUsed = parseFloat(data.memoryUsedBytes);
+    const memoryTotal = parseFloat(data.memoryTotalBytes);
+    const memoryPercent = memoryTotal ? (memoryUsed / memoryTotal) * 100 : 0;
+
+    const diskUsed = parseFloat(data.diskUsedBytes);
+    const diskTotal = parseFloat(data.diskTotalBytes);
+    const diskPercent = diskTotal ? (diskUsed / diskTotal) * 100 : 0;
+
+    // ✅ 차트에 시간, cpu, memory, disk 반영
+    chart.data.labels.push(now);
+    chart.data.labels.shift();
+
+    chart.data.datasets[0].data.push(cpu);
+    chart.data.datasets[0].data.shift();
+
+    chart.data.datasets[1].data.push(memoryPercent);
+    chart.data.datasets[1].data.shift();
+
+    chart.data.datasets[2].data.push(diskPercent);
+    chart.data.datasets[2].data.shift();
+
+    chart.update();
+  }
+
+  const updateContainerChart = (data) => {
+    const chart = containerChartInstance.current;
+    if (!chart) return;
+
+    const now = new Date();
+    const cpu = parseFloat(data.cpuUsagePercent);
+    const memoryUsed = parseFloat(data.memoryUsedBytes);
+    const memoryPercent = memoryUsed ? (memoryUsed / (2 * 1024 * 1024 * 1024)) * 100 : 0;
+    const diskDelta = (parseFloat(data.diskReadBytesDelta ?? 0) + parseFloat(data.diskWriteBytesDelta ?? 0)) / 100;
+
+    chart.data.labels.push(now);
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.push(cpu);
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.push(memoryPercent);
+    chart.data.datasets[1].data.shift();
+    chart.data.datasets[2].data.push(diskDelta);
+    chart.data.datasets[2].data.shift();
+    chart.update();
   };
 
   const initChart = (type, canvas, data) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    if (type === 'host' && hostChartInstance.current) hostChartInstance.current.destroy();
-    if (type === 'container' && containerChartInstance.current) containerChartInstance.current.destroy();
-
     const usage = data[0] ?? { cpuUsagePercent: 0, memoryUsedBytes: 0, memoryTotalBytes: 1, diskUsedBytes: 0, diskTotalBytes: 1 };
-
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -129,9 +139,37 @@ function Dashboard() {
         scales: { x: { type: 'time', time: { unit: 'minute' } }, y: { beginAtZero: true } }
       }
     });
+    if (type === 'host') {
+      if (hostChartInstance.current) hostChartInstance.current.destroy();
+      hostChartInstance.current = chart;
+    }
+    if (type === 'container') {
+      if (containerChartInstance.current) containerChartInstance.current.destroy();
+      containerChartInstance.current = chart;
+    }
+  };
 
-    if (type === 'host') hostChartInstance.current = chart;
-    if (type === 'container') containerChartInstance.current = chart;
+  const updateSummary = (data) => {
+    const name = data.hostId || data.containerId || 'Unknown';
+    const cpu = data.cpuUsagePercent || 0;
+    const memory = (data.memoryUsedBytes / data.memoryTotalBytes) * 100;
+    const disk = data.diskTotalBytes ? (data.diskUsedBytes / data.diskTotalBytes) * 100 : 0;
+    setSummaryRows(prev => [...prev.filter(r => r.name !== name), { name, cpu, memory, disk }].sort((a, b) => b.cpu - a.cpu).slice(0, 3));
+  };
+
+  const drawNetworkLive = (networkDelta) => {
+    const chart = networkChartInstance.current;
+    if (!chart) return;
+    const now = new Date();
+    chart.data.labels.push(now);
+    chart.data.labels.shift();
+    chart.data.datasets.forEach((dataset) => {
+      const [iface, direction] = dataset.label.split(' ');
+      const value = direction === 'Recv' ? (networkDelta[iface]?.rxBps ?? 0) : (networkDelta[iface]?.txBps ?? 0);
+      dataset.data.push(value);
+      dataset.data.shift();
+    });
+    chart.update();
   };
 
   const renderHostSelector = () => {
@@ -152,8 +190,8 @@ function Dashboard() {
   };
 
   const drawNetwork = (host) => {
-    if (!networkChartRef.current) return;
-    const ctx = networkChartRef.current.getContext('2d');
+    const ctx = networkChartRef.current?.getContext('2d');
+    if (!ctx) return;
     networkChartInstance.current?.destroy();
     const timestamps = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000));
     const datasets = Object.entries(host.network).flatMap(([iface, val]) => [
@@ -179,17 +217,14 @@ function Dashboard() {
           <h1>Dashboard</h1>
           <input type="search" className={styles.search} placeholder="Search" />
         </header>
-
         <div className={styles.thresholdSummary}>
-          <p>⚙️ 현재 임계치 - CPU: {thresholds.cpuPercent}%, Mem: {thresholds.memoryPercent}%, Disk: {thresholds.diskPercent}%, Net: {thresholds.networkTraffic}</p>
+          <p>⚙️ 현재 임계치 - CPU: {thresholds.cpuPercent}%, Mem: {thresholds.memoryPercent}%, Disk: {thresholds.diskPercent}%</p>
         </div>
-
         {liveMetrics && (
           <div className={styles.liveMetricsBanner}>
-            📈 실시간 메트릭 → CPU: {liveMetrics.cpu}%, Mem: {liveMetrics.memory}%, Disk: {liveMetrics.disk}%
+            📈 실시간 메트릭 → CPU: {liveMetrics.cpuUsagePercent?.toFixed(1)}%, Mem: {(liveMetrics.memoryUsedBytes / liveMetrics.memoryTotalBytes * 100).toFixed(1)}%, Disk: {(liveMetrics.diskUsedBytes / liveMetrics.diskTotalBytes * 100).toFixed(1)}%
           </div>
         )}
-
         <div className={styles.dashboard}>
           <div className={`${styles.row} ${styles.summarySection}`}>
             <div className={styles.summaryCard}>
@@ -200,7 +235,7 @@ function Dashboard() {
                 </div>
                 <div className={styles.filterControls}>
                   <input type="date" className={styles.dateInput} value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
-                  <button className={styles.searchButton} onClick={renderSummary}>🔍</button>
+                  <button className={styles.searchButton}>🔍</button>
                 </div>
               </div>
               <table>
@@ -220,7 +255,6 @@ function Dashboard() {
               </table>
             </div>
           </div>
-
           <div className={styles.row}>
             <div className={styles.card}>
               <div className={styles.header}><h2>Host Machine Usage</h2></div>
@@ -231,7 +265,6 @@ function Dashboard() {
               <canvas ref={containerChartRef} />
             </div>
           </div>
-
           <div className={styles.row}>
             <div className={styles.card}>
               <div className={styles.header}><h2>Network Traffic</h2></div>
