@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import { useEffect, useRef, useState } from 'react';
 import styles from './Dashboard.module.css';
 import Chart from 'chart.js/auto';
@@ -21,18 +22,6 @@ function Dashboard() {
   const containerChartInstance = useRef(null);
   const networkChartInstance = useRef(null);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      initChart('host', hostChartRef.current, hostData);
-      initChart('container', containerChartRef.current, containerData);
-      renderHostSelector();
-      drawNetwork(hostData[0]);
-      setupThresholdSSE();
-      setupWebSocket();
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, []);
-
   const setupThresholdSSE = () => {
     const eventSource = new EventSource('/api/metrics/threshold-alert');
     eventSource.onmessage = (event) => {
@@ -51,26 +40,54 @@ function Dashboard() {
 
   const setupWebSocket = () => {
     const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+
     socket.onopen = () => console.log('✅ WebSocket 연결됨');
+
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'container') updateContainerChart(data);
-        if (data.cpuUsagePercent !== undefined) updateHostChart(data);
-        if (data.networkDelta) drawNetworkLive(data.networkDelta);
-        if (data.hostId || data.containerId) updateSummary(data);
+        console.log('📨 받은 WebSocket 데이터:', data); // ← 여기에 추가
+
+        if (data.type === 'container') {
+          console.log('📊 컨테이너 차트 업데이트 시작:', data);
+          updateContainerChart(data);
+        }
+
+        console.log('📨 받은 메시지:', data);
+        console.log('🧪 data.type:', data.type);
+
+        if (data.type?.trim() === 'localhost') {
+          console.log('📊 호스트 차트 업데이트 시작:', data);
+          updateHostChart(data);
+        }
+
+        if (data.networkDelta) {
+          drawNetworkLive(data.networkDelta);
+        }
+
+        if (data.hostId || data.containerId) {
+          updateSummary(data);
+        }
+
         setLiveMetrics(data);
       } catch (e) {
         console.error('웹소켓 데이터 파싱 오류:', e);
       }
     };
+
     socket.onerror = (e) => console.error('❌ WebSocket 에러', e);
     socket.onclose = () => console.warn('🔌 WebSocket 연결 종료됨');
   };
 
+
   function updateHostChart(data) {
+    console.log('🛠 updateHostChart() 함수 호출됨!');
+
     const chart = hostChartInstance.current;
-    if (!chart) return;
+    if (!chart) {
+      console.warn('⚠️ hostChartInstance is null, 차트 업데이트 불가');
+      return;
+    }
 
     const now = new Date();
     const cpu = parseFloat(data.cpuUsagePercent);
@@ -82,18 +99,17 @@ function Dashboard() {
     const diskTotal = parseFloat(data.diskTotalBytes);
     const diskPercent = diskTotal ? (diskUsed / diskTotal) * 100 : 0;
 
-    // ✅ 차트에 시간, cpu, memory, disk 반영
     chart.data.labels.push(now);
-    chart.data.labels.shift();
+    if (chart.data.labels.length > 30) chart.data.labels.shift();
 
     chart.data.datasets[0].data.push(cpu);
-    chart.data.datasets[0].data.shift();
+    if (chart.data.datasets[0].data.length > 30) chart.data.datasets[0].data.shift();
 
     chart.data.datasets[1].data.push(memoryPercent);
-    chart.data.datasets[1].data.shift();
+    if (chart.data.datasets[1].data.length > 30) chart.data.datasets[1].data.shift();
 
     chart.data.datasets[2].data.push(diskPercent);
-    chart.data.datasets[2].data.shift();
+    if (chart.data.datasets[2].data.length > 30) chart.data.datasets[2].data.shift();
 
     chart.update();
   }
@@ -109,13 +125,17 @@ function Dashboard() {
     const diskDelta = (parseFloat(data.diskReadBytesDelta ?? 0) + parseFloat(data.diskWriteBytesDelta ?? 0)) / 100;
 
     chart.data.labels.push(now);
-    chart.data.labels.shift();
+    if (chart.data.labels.length > 30) chart.data.labels.shift();
+
     chart.data.datasets[0].data.push(cpu);
-    chart.data.datasets[0].data.shift();
+    if (chart.data.datasets[0].data.length > 30) chart.data.datasets[0].data.shift();
+
     chart.data.datasets[1].data.push(memoryPercent);
-    chart.data.datasets[1].data.shift();
+    if (chart.data.datasets[1].data.length > 30) chart.data.datasets[1].data.shift();
+
     chart.data.datasets[2].data.push(diskDelta);
-    chart.data.datasets[2].data.shift();
+    if (chart.data.datasets[2].data.length > 30) chart.data.datasets[2].data.shift();
+
     chart.update();
   };
 
@@ -123,14 +143,19 @@ function Dashboard() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const usage = data[0] ?? { cpuUsagePercent: 0, memoryUsedBytes: 0, memoryTotalBytes: 1, diskUsedBytes: 0, diskTotalBytes: 1 };
+
+    const cpu = parseFloat(usage.cpuUsagePercent) || 0;
+    const mem = (usage.memoryUsedBytes / usage.memoryTotalBytes) * 100 || 0;
+    const disk = (usage.diskUsedBytes / usage.diskTotalBytes) * 100 || 0;
+
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000)),
         datasets: [
-          { label: 'CPU', data: Array(30).fill(usage.cpuUsagePercent), borderColor: '#ff6384' },
-          { label: 'Memory', data: Array(30).fill((usage.memoryUsedBytes / usage.memoryTotalBytes) * 100), borderColor: '#36a2eb' },
-          { label: 'Disk', data: Array(30).fill((usage.diskUsedBytes / usage.diskTotalBytes) * 100), borderColor: '#ffce56' }
+          { label: 'CPU', data: Array(30).fill(cpu), borderColor: '#ff6384' },
+          { label: 'Memory', data: Array(30).fill(mem), borderColor: '#36a2eb' },
+          { label: 'Disk', data: Array(30).fill(disk), borderColor: '#ffce56' }
         ]
       },
       options: {
@@ -139,6 +164,7 @@ function Dashboard() {
         scales: { x: { type: 'time', time: { unit: 'minute' } }, y: { beginAtZero: true } }
       }
     });
+
     if (type === 'host') {
       if (hostChartInstance.current) hostChartInstance.current.destroy();
       hostChartInstance.current = chart;
@@ -149,12 +175,25 @@ function Dashboard() {
     }
   };
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      initChart('host', hostChartRef.current, hostData);
+      initChart('container', containerChartRef.current, containerData);
+      renderHostSelector();
+      drawNetwork(hostData[0]);
+      setupThresholdSSE();
+      setupWebSocket();
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, []);
+
   const updateSummary = (data) => {
     const name = data.hostId || data.containerId || 'Unknown';
     const cpu = data.cpuUsagePercent || 0;
     const memory = (data.memoryUsedBytes / data.memoryTotalBytes) * 100;
     const disk = data.diskTotalBytes ? (data.diskUsedBytes / data.diskTotalBytes) * 100 : 0;
-    setSummaryRows(prev => [...prev.filter(r => r.name !== name), { name, cpu, memory, disk }].sort((a, b) => b.cpu - a.cpu).slice(0, 3));
+    setSummaryRows(prev => [...prev.filter(r => r.name !== name), { name, cpu, memory, disk }]
+      .sort((a, b) => b.cpu - a.cpu).slice(0, 3));
   };
 
   const drawNetworkLive = (networkDelta) => {
@@ -162,12 +201,12 @@ function Dashboard() {
     if (!chart) return;
     const now = new Date();
     chart.data.labels.push(now);
-    chart.data.labels.shift();
+    if (chart.data.labels.length > 30) chart.data.labels.shift();
     chart.data.datasets.forEach((dataset) => {
       const [iface, direction] = dataset.label.split(' ');
       const value = direction === 'Recv' ? (networkDelta[iface]?.rxBps ?? 0) : (networkDelta[iface]?.txBps ?? 0);
       dataset.data.push(value);
-      dataset.data.shift();
+      if (dataset.data.length > 30) dataset.data.shift();
     });
     chart.update();
   };
