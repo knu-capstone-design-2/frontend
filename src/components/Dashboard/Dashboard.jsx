@@ -31,6 +31,23 @@ function Dashboard() {
   const hostNetworkChartInstance = useRef(null);
   const containerNetworkChartRef = useRef(null);
   const containerNetworkChartInstance = useRef(null);
+  const hostIdToName = useRef({});
+  const containerIdToName = useRef({});
+
+useEffect(() => {
+  const hostMap = {};
+  hostData.forEach((host) => {
+    hostMap[host.hostId] = host.hostName || host.hostId;
+  });
+  hostIdToName.current = hostMap;
+
+  const containerMap = {};
+  containerData.forEach((container) => {
+    containerMap[container.containerId] = container.containerName || container.containerId;
+  });
+  containerIdToName.current = containerMap;
+}, [hostData, containerData]);
+
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -94,15 +111,25 @@ function Dashboard() {
     socket.onclose = () => console.warn("🔌 WebSocket 연결 종료됨");
   };
 
-  const updateSummary = (data) => {
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+const updateSummary = (data) => {
   const name = data.hostId || data.containerId || "Unknown";
   const cpu = data.cpuUsagePercent || 0;
-  const memory = data.memoryUsedBytes && data.memoryTotalBytes
-    ? (data.memoryUsedBytes / data.memoryTotalBytes) * 100
-    : 0;
-  const disk = data.diskUsedBytes && data.diskTotalBytes
-    ? (data.diskUsedBytes / data.diskTotalBytes) * 100
-    : 0;
+
+  const memoryUsed = data.memoryUsedBytes || 0;
+  const memoryTotal = data.memoryTotalBytes || 1; // 0으로 나누는 에러 방지
+  const memory = `${formatBytes(memoryUsed)} / ${formatBytes(memoryTotal)}`;
+
+  const diskUsed = data.diskUsedBytes || 0;
+  const diskTotal = data.diskTotalBytes || 1;
+  const disk = `${formatBytes(diskUsed)} / ${formatBytes(diskTotal)}`;
 
   setSummaryRows((prev) =>
     [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }]
@@ -307,14 +334,37 @@ function Dashboard() {
         </header>
         <div className={styles.thresholdSummary}>
           <p>
-            ⚙️ 현재 임계치 - CPU: {thresholds.cpuPercent}%, Mem: {thresholds.memoryPercent}%, Disk: {thresholds.diskPercent}%
+            {/* ⚙️ 현재 임계치 - CPU: {thresholds.cpuPercent}%, Mem: {thresholds.memoryPercent}%, Disk: {thresholds.diskPercent}% */}
           </p>
         </div>
         {liveMetrics && (
           <div className={styles.liveMetricsBanner}>
-            📈 실시간 메트릭 - CPU: {liveMetrics.cpuUsagePercent?.toFixed(1)}%, Mem: {((liveMetrics.memoryUsedBytes / liveMetrics.memoryTotalBytes) * 100).toFixed(1)}%, Disk: {((liveMetrics.diskUsedBytes / liveMetrics.diskTotalBytes) * 100).toFixed(1)}%
+            {/* 📈 실시간 메트릭 - CPU: {liveMetrics.cpuUsagePercent?.toFixed(1)}%, Mem: {((liveMetrics.memoryUsedBytes / liveMetrics.memoryTotalBytes) * 100).toFixed(1)}%, Disk: {((liveMetrics.diskUsedBytes / liveMetrics.diskTotalBytes) * 100).toFixed(1)}% */}
           </div>
         )}
+        <div className={styles.summaryBox}>
+          <h2>Top 3 Usage Summary</h2>
+          <table className={styles.summaryTable}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>CPU (%)</th>
+                <th>Memory</th>
+                <th>Disk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map((row) => (
+                <tr key={row.name}>
+                  <td>{row.name}</td>
+                  <td>{row.cpu.toFixed(1)}</td>
+                  <td>{row.memory}</td>
+                  <td>{row.disk}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className={styles.dashboard}>
           <div className={styles.row}>
             <div className={styles.card}>
@@ -322,7 +372,9 @@ function Dashboard() {
                 <h2>Host Machine Usage</h2>
                 <select value={selectedHostId} onChange={(e) => setSelectedHostId(e.target.value)}>
                   {hostData.map((host) => (
-                    <option key={host.hostId} value={host.hostId}>{host.hostName}</option>
+                    <option key={host.hostId} value={host.hostId}>
+                      {hostIdToName.current[host.hostId] || host.hostId}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -371,3 +423,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

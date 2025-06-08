@@ -242,3 +242,23 @@ canvas {
   pointer-events: auto;
 }
 
+.summaryBox {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 2rem 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.summaryTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.summaryTable th,
+.summaryTable td {
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem;
+  text-align: center;
+}
