@@ -9,11 +9,12 @@ import Sidebar from "../Sidebar/Sidebar";
 
 function Dashboard() {
   const [thresholds, setThresholds] = useState({
-    cpuPercent: "",
-    memoryPercent: "",
-    diskPercent: "",
-    networkTraffic: "",
-  });
+  cpuPercent: "",
+  memoryBytes: "",
+  diskBytes: "",
+  networkTraffic: "", // 유지해도 되고 제거 가능
+});
+
   const [selectedDate, setSelectedDate] = useState("");
   const [summaryRows, setSummaryRows] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -119,6 +120,21 @@ function formatBytes(bytes) {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
+const applyThresholdsToSummary = () => {
+  const name = "Threshold";
+
+  const cpu = parseFloat(thresholds.cpuPercent) || 0;
+  const memory = formatBytes(parseInt(thresholds.memoryBytes) || 0);
+  const disk = formatBytes(parseInt(thresholds.diskBytes) || 0);
+
+  setSummaryRows((prev) =>
+    [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }]
+      .sort((a, b) => b.cpu - a.cpu)
+      .slice(0, 3)
+  );
+};
+
+
 const updateSummary = (data) => {
   const name = data.hostId || data.containerId || "Unknown";
   const cpu = data.cpuUsagePercent || 0;
@@ -153,9 +169,9 @@ const updateSummary = (data) => {
     chart.data.labels.shift();
     chart.data.datasets[0].data.push(cpu);
     chart.data.datasets[0].data.shift();
-    chart.data.datasets[1].data.push(memoryPercent);
+    chart.data.datasets[1].data.push(memoryUsed);
     chart.data.datasets[1].data.shift();
-    chart.data.datasets[2].data.push(diskPercent);
+    chart.data.datasets[2].data.push(diskUsed);
     chart.data.datasets[2].data.shift();
     chart.update("none");
   };
@@ -172,7 +188,7 @@ const updateSummary = (data) => {
     chart.data.labels.shift();
     chart.data.datasets[0].data.push(cpu);
     chart.data.datasets[0].data.shift();
-    chart.data.datasets[1].data.push(memoryPercent);
+    chart.data.datasets[1].data.push(memoryUsed);
     chart.data.datasets[1].data.shift();
     chart.data.datasets[2].data.push(diskDelta);
     chart.data.datasets[2].data.shift();
@@ -222,13 +238,13 @@ const updateSummary = (data) => {
           {
             label: "Memory",
             yAxisID: "y1",
-            data: Array(30).fill((usage.memoryUsedBytes / usage.memoryTotalBytes) * 100),
+            data: Array(30).fill(usage.memoryUsedBytes), 
             borderColor: "#36a2eb",
           },
           {
             label: "Disk",
             yAxisID: "y1",
-            data: Array(30).fill((usage.diskUsedBytes / usage.diskTotalBytes) * 100),
+            data: Array(30).fill(usage.diskUsedBytes),
             borderColor: "#ffce56",
           },
         ],
@@ -343,7 +359,7 @@ const updateSummary = (data) => {
           </div>
         )}
         <div className={styles.summaryBox}>
-          <h2>Top 3 Usage Summary</h2>
+          <h2>Top 3 Under-resourced</h2>
           <table className={styles.summaryTable}>
             <thead>
               <tr>
@@ -417,6 +433,61 @@ const updateSummary = (data) => {
             </div>
           </div>
         </div>
+        {showSettings && (
+        <div className={styles.settingsModal}>
+          <h3>⚙️ 임계값 설정</h3>
+          <label>
+          CPU (%):{" "}
+          <input
+            type="number"
+            value={thresholds.cpuPercent}
+            onChange={(e) =>
+              setThresholds((prev) => ({
+                ...prev,
+                cpuPercent: e.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <label>
+          Memory (bytes):{" "}
+          <input
+            type="number"
+            value={thresholds.memoryBytes}
+            onChange={(e) =>
+              setThresholds((prev) => ({
+                ...prev,
+                memoryBytes: e.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <label>
+          Disk (bytes):{" "}
+          <input
+            type="number"
+            value={thresholds.diskBytes}
+            onChange={(e) =>
+              setThresholds((prev) => ({
+                ...prev,
+                diskBytes: e.target.value,
+              }))
+            }
+          />
+        </label>
+
+          <button
+            onClick={() => {
+              applyThresholdsToSummary();
+              setShowSettings(false);
+            }}
+          >
+            적용
+          </button>
+        </div>
+      )}
       </main>
     </div>
   );
