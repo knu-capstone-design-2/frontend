@@ -9,20 +9,26 @@ import Sidebar from "../Sidebar/Sidebar";
 
 function Dashboard() {
   const [thresholds, setThresholds] = useState({
-  cpuPercent: "",
-  memoryBytes: "",
-  diskBytes: "",
-  networkTraffic: "", 
-});
+    cpuPercent: "",
+    memoryBytes: "",
+    diskBytes: "",
+    networkTraffic: "",
+  });
 
   const [selectedDate, setSelectedDate] = useState("");
   const [summaryRows, setSummaryRows] = useState([]);
   const [showSettings, setShowSettings] = useState(false);
   const [liveMetrics, setLiveMetrics] = useState(null);
   const [selectedHostId, setSelectedHostId] = useState(hostData[0].hostId);
-  const [selectedContainerId, setSelectedContainerId] = useState(containerData[0].containerId);
-  const selectedHostData = hostData.find((host) => host.hostId === selectedHostId);
-  const selectedContainerData = containerData.find((c) => c.containerId === selectedContainerId);
+  const [selectedContainerId, setSelectedContainerId] = useState(
+    containerData[0].containerId
+  );
+  const selectedHostData = hostData.find(
+    (host) => host.hostId === selectedHostId
+  );
+  const selectedContainerData = containerData.find(
+    (c) => c.containerId === selectedContainerId
+  );
 
   const hostChartRef = useRef(null);
   const containerChartRef = useRef(null);
@@ -36,32 +42,48 @@ function Dashboard() {
   const containerIdToName = useRef({});
   const [exceededRows, setExceededRows] = useState([]);
 
-useEffect(() => {
-  const hostMap = {};
-  hostData.forEach((host) => {
-    hostMap[host.hostId] = host.hostName || host.hostId;
-  });
-  hostIdToName.current = hostMap;
+  const thresholdsRef = useRef(thresholds);
 
-  const containerMap = {};
-  containerData.forEach((container) => {
-    containerMap[container.containerId] = container.containerName || container.containerId;
-  });
-  containerIdToName.current = containerMap;
-}, [hostData, containerData]);
+  useEffect(() => {
+    const hostMap = {};
+    hostData.forEach((host) => {
+      hostMap[host.hostId] = host.hostName || host.hostId;
+    });
+    hostIdToName.current = hostMap;
 
+    const containerMap = {};
+    containerData.forEach((container) => {
+      containerMap[container.containerId] =
+        container.containerName || container.containerId;
+    });
+    containerIdToName.current = containerMap;
+  }, [hostData, containerData]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       initChart("host", hostChartRef.current, [selectedHostData]);
-      initChart("container", containerChartRef.current, [selectedContainerData]);
-      initNetworkChart(hostNetworkChartRef, hostNetworkChartInstance, selectedHostData.network);
-      initNetworkChart(containerNetworkChartRef, containerNetworkChartInstance, selectedContainerData.network);
+      initChart("container", containerChartRef.current, [
+        selectedContainerData,
+      ]);
+      initNetworkChart(
+        hostNetworkChartRef,
+        hostNetworkChartInstance,
+        selectedHostData.network
+      );
+      initNetworkChart(
+        containerNetworkChartRef,
+        containerNetworkChartInstance,
+        selectedContainerData.network
+      );
       setupThresholdSSE();
       setupWebSocket();
     }, 300);
     return () => clearTimeout(timeout);
   }, [selectedHostId, selectedContainerId]);
+
+  useEffect(() => {
+    thresholdsRef.current = thresholds;
+  }, [thresholds]);
 
   const setupThresholdSSE = () => {
     const eventSource = new EventSource("/api/metrics/threshold-alert");
@@ -82,113 +104,153 @@ useEffect(() => {
     };
   };
 
-const setupWebSocket = () => {
-  const socket = new WebSocket(import.meta.env.VITE_WS_URL);
-  socket.onopen = () => console.log("✅ WebSocket 연결됨");
+  const setupWebSocket = () => {
+    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+    socket.onopen = () => console.log("✅ WebSocket 연결됨");
 
-  socket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      const source = data.containerId ? "container" : data.hostId ? "host" : "unknown";
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const source = data.containerId
+          ? "container"
+          : data.hostId
+          ? "host"
+          : "unknown";
 
-      // ✅ 실시간 수신된 컨테이너 로그 출력
-      if (data.type === "container") {
-        console.log("📦 받은 컨테이너 데이터:", data);
-        updateContainerChart(data);
-      }
-
-      // ✅ 네트워크 차트 업데이트 (host 또는 container)
-      if ((data.type === "localhost" || data.type === "container") && data.networkDelta) {
-        const targetRef = data.type === "localhost" ? hostNetworkChartRef : containerNetworkChartRef;
-        const targetInstance = data.type === "localhost" ? hostNetworkChartInstance : containerNetworkChartInstance;
-        if (!targetInstance.current) {
-          initNetworkChart(targetRef, targetInstance, data.networkDelta);
+        // ✅ 실시간 수신된 컨테이너 로그 출력
+        if (data.type === "container") {
+          console.log("📦 받은 컨테이너 데이터:", data);
+          updateContainerChart(data);
         }
-        drawNetworkLive(data.networkDelta, targetInstance);
+
+        // ✅ 네트워크 차트 업데이트 (host 또는 container)
+        if (
+          (data.type === "localhost" || data.type === "container") &&
+          data.networkDelta
+        ) {
+          const targetRef =
+            data.type === "localhost"
+              ? hostNetworkChartRef
+              : containerNetworkChartRef;
+          const targetInstance =
+            data.type === "localhost"
+              ? hostNetworkChartInstance
+              : containerNetworkChartInstance;
+          if (!targetInstance.current) {
+            initNetworkChart(targetRef, targetInstance, data.networkDelta);
+          }
+          drawNetworkLive(data.networkDelta, targetInstance);
+        }
+
+        if (data.type === "localhost") updateHostChart(data);
+        if (data.hostId || data.containerId) updateSummary(data);
+        setLiveMetrics(data);
+      } catch (e) {
+        console.error("웹소켓 데이터 파싱 오류:", e);
       }
+    };
 
-      if (data.type === "localhost") updateHostChart(data);
-      if (data.hostId || data.containerId) updateSummary(data);
-      setLiveMetrics(data);
-
-    } catch (e) {
-      console.error("웹소켓 데이터 파싱 오류:", e);
-    }
+    socket.onerror = (e) => console.error("❌ WebSocket 에러", e);
+    socket.onclose = () => console.warn("🔌 WebSocket 연결 종료됨");
   };
 
-  socket.onerror = (e) => console.error("❌ WebSocket 에러", e);
-  socket.onclose = () => console.warn("🔌 WebSocket 연결 종료됨");
-};
+  function formatBytes(bytes) {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  }
 
+  const applyThresholdsToSummary = () => {
+    const name = "Threshold";
 
-function formatBytes(bytes) {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
+    const cpu = parseFloat(thresholds.cpuPercent) || 0;
+    const memory = formatBytes(parseInt(thresholds.memoryBytes) || 0);
+    const disk = formatBytes(parseInt(thresholds.diskBytes) || 0);
 
-const applyThresholdsToSummary = () => {
-  const name = "Threshold";
+    setSummaryRows((prev) => {
+      const filteredPrev = prev.filter(
+        (r) => r.name !== name && r.name !== "Threshold"
+      );
 
-  const cpu = parseFloat(thresholds.cpuPercent) || 0;
-  const memory = formatBytes(parseInt(thresholds.memoryBytes) || 0);
-  const disk = formatBytes(parseInt(thresholds.diskBytes) || 0);
+      const updated = [...filteredPrev, { name, cpu, memory, disk }];
 
-  setSummaryRows((prev) =>
-    [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }]
-      .sort((a, b) => b.cpu - a.cpu)
-      .slice(0, 3)
-  );
-};
+      const uniqueMap = new Map();
+      updated.forEach((row) => uniqueMap.set(row.name, row));
+      const deduplicated = Array.from(uniqueMap.values());
 
+      // "Threshold"는 절대 포함하지 않도록 다시 한번 필터링
+      return deduplicated
+        .filter((r) => r.name !== "Threshold")
+        .sort((a, b) => b.cpu - a.cpu)
+        .slice(0, 3);
+    });
+  };
 
-const updateSummary = (data) => {
-  const name = data.hostId || data.containerId || "Unknown";
-  const cpu = data.cpuUsagePercent || 0;
+  const updateSummary = (data) => {
+    const name = data.hostId || data.containerId || "Unknown";
+    const cpu = data.cpuUsagePercent || 0;
 
-  const memoryUsed = data.memoryUsedBytes || 0;
-  const memoryTotal = data.memoryTotalBytes || 1;
-  const memoryPercent = (memoryUsed / memoryTotal) * 100;
+    const memoryUsed = data.memoryUsedBytes || 0;
+    const memoryTotal = data.memoryTotalBytes || 1;
+    const memoryPercent = (memoryUsed / memoryTotal) * 100;
 
-  const diskUsed = data.diskUsedBytes || 0;
-  const diskTotal = data.diskTotalBytes || 1;
-  const diskPercent = (diskUsed / diskTotal) * 100;
+    const diskUsed = data.diskUsedBytes || 0;
+    const diskTotal = data.diskTotalBytes || 1;
+    const diskPercent = (diskUsed / diskTotal) * 100;
 
-  const memory = `${formatBytes(memoryUsed)}`;
-  const disk = `${formatBytes(diskUsed)}`;
+    const memory = `${formatBytes(memoryUsed)}`;
+    const disk = `${formatBytes(diskUsed)}`;
 
-  // ✅ Top 3 업데이트
-  setSummaryRows((prev) => {
-    const updated = [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }];
+    // ✅ Top 3 업데이트
+    setSummaryRows((prev) => {
+      const updated = [
+        ...prev.filter((r) => r.name !== name),
+        { name, cpu, memory, disk },
+      ];
 
-    const uniqueMap = new Map();
-    updated.forEach((row) => uniqueMap.set(row.name, row));
-    const deduplicated = Array.from(uniqueMap.values());
+      const uniqueMap = new Map();
+      updated.forEach((row) => uniqueMap.set(row.name, row));
+      const deduplicated = Array.from(uniqueMap.values());
 
-    return deduplicated
-      .sort((a, b) => b.cpu - a.cpu)
-      .slice(0, 3);
-  });
+      return deduplicated.sort((a, b) => b.cpu - a.cpu).slice(0, 3);
+    });
 
-  // ✅ 임계값 초과 감지
-  const exceeded = [];
-  if (thresholds.cpuPercent && cpu > parseFloat(thresholds.cpuPercent)) exceeded.push("CPU");
-  if (thresholds.memoryBytes && memoryPercent > (parseInt(thresholds.memoryBytes) / memoryTotal) * 100) exceeded.push("Memory");
-  if (thresholds.diskBytes && diskPercent > (parseInt(thresholds.diskBytes) / diskTotal) * 100) exceeded.push("Disk");
+    // ✅ 임계값 초과 감지
+    const exceeded = [];
+    const currentThresholds = thresholdsRef.current;
 
-  const type = data.hostId ? 'host' : data.containerId ? 'container' : 'unknown';
+    if (
+      currentThresholds.cpuPercent &&
+      cpu > parseFloat(currentThresholds.cpuPercent)
+    )
+      exceeded.push("CPU");
+    if (
+      currentThresholds.memoryBytes &&
+      memoryPercent >
+        (parseInt(currentThresholds.memoryBytes) / memoryTotal) * 100
+    )
+      exceeded.push("Memory");
+    if (
+      currentThresholds.diskBytes &&
+      diskPercent > (parseInt(currentThresholds.diskBytes) / diskTotal) * 100
+    )
+      exceeded.push("Disk");
 
-setExceededRows((prev) => {
-  const filtered = prev.filter((r) => r.name !== name); // 중복 제거
-  return exceeded.length > 0
-    ? [...filtered, { name, type, exceeded }]
-    : filtered;
-});
+    const type = data.hostId
+      ? "host"
+      : data.containerId
+      ? "container"
+      : "unknown";
 
-};
-
+    setExceededRows((prev) => {
+      const filtered = prev.filter((r) => r.name !== name); // 중복 제거
+      return exceeded.length > 0
+        ? [...filtered, { name, type, exceeded }]
+        : filtered;
+    });
+  };
 
   const updateHostChart = (data) => {
     const chart = hostChartInstance.current;
@@ -218,8 +280,13 @@ setExceededRows((prev) => {
     const now = new Date();
     const cpu = parseFloat(data.cpuUsagePercent);
     const memoryUsed = parseFloat(data.memoryUsedBytes);
-    const memoryPercent = memoryUsed ? (memoryUsed / (2 * 1024 * 1024 * 1024)) * 100 : 0;
-    const diskDelta = (parseFloat(data.diskReadBytesDelta ?? 0) + parseFloat(data.diskWriteBytesDelta ?? 0)) / 100;
+    const memoryPercent = memoryUsed
+      ? (memoryUsed / (2 * 1024 * 1024 * 1024)) * 100
+      : 0;
+    const diskDelta =
+      (parseFloat(data.diskReadBytesDelta ?? 0) +
+        parseFloat(data.diskWriteBytesDelta ?? 0)) /
+      100;
     chart.data.labels.push(now);
     chart.data.labels.shift();
     chart.data.datasets[0].data.push(cpu);
@@ -240,7 +307,11 @@ setExceededRows((prev) => {
     chart.data.datasets.forEach((dataset) => {
       const [iface, direction] = dataset.label.split(" ");
       const delta = networkDelta[iface];
-      const bps = delta ? (direction === "Recv" ? delta.rxBps ?? 0 : delta.txBps ?? 0) : 0;
+      const bps = delta
+        ? direction === "Recv"
+          ? delta.rxBps ?? 0
+          : delta.txBps ?? 0
+        : 0;
       const kbps = parseFloat((bps / 1000).toFixed(2));
       dataset.data.push(kbps);
       dataset.data.shift();
@@ -248,7 +319,16 @@ setExceededRows((prev) => {
     chart.update("none");
   };
 
-  const COLORS = ["#ff6384", "#36a2eb", "#cc65fe", "#ffce56", "#4bc0c0", "#9966ff", "#c9cbcf", "#ff9f40"];
+  const COLORS = [
+    "#ff6384",
+    "#36a2eb",
+    "#cc65fe",
+    "#ffce56",
+    "#4bc0c0",
+    "#9966ff",
+    "#c9cbcf",
+    "#ff9f40",
+  ];
 
   const initChart = (type, canvas, data) => {
     if (!canvas) return;
@@ -263,7 +343,10 @@ setExceededRows((prev) => {
     const chart = new Chart(ctx, {
       type: "line",
       data: {
-        labels: Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 60000)),
+        labels: Array.from(
+          { length: 30 },
+          (_, i) => new Date(Date.now() - (29 - i) * 60000)
+        ),
         datasets: [
           {
             label: "CPU",
@@ -274,7 +357,7 @@ setExceededRows((prev) => {
           {
             label: "Memory",
             yAxisID: "y1",
-            data: Array(30).fill(usage.memoryUsedBytes), 
+            data: Array(30).fill(usage.memoryUsedBytes),
             borderColor: "#36a2eb",
           },
           {
@@ -318,7 +401,8 @@ setExceededRows((prev) => {
       hostChartInstance.current = chart;
     }
     if (type === "container") {
-      if (containerChartInstance.current) containerChartInstance.current.destroy();
+      if (containerChartInstance.current)
+        containerChartInstance.current.destroy();
       containerChartInstance.current = chart;
     }
   };
@@ -327,7 +411,10 @@ setExceededRows((prev) => {
     const ctx = ref.current?.getContext("2d");
     if (!ctx) return;
     instanceRef.current?.destroy();
-    const timestamps = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 1000));
+    const timestamps = Array.from(
+      { length: 30 },
+      (_, i) => new Date(Date.now() - (29 - i) * 1000)
+    );
     const interfaces = Object.keys(networkDelta);
     const datasets = interfaces.flatMap((iface, idx) => [
       {
@@ -421,42 +508,53 @@ setExceededRows((prev) => {
           <div className={styles.warningInner}>
             <h3>⚠️ 임계값 초과 리소스</h3>
             <div className={styles.warningRow}>
-              {['host', 'container'].map((type) => {
+              {["host", "container"].map((type) => {
                 const filtered = exceededRows.filter((r) => r.type === type);
                 return (
                   <div key={type} className={styles.warningBoxItem}>
+                    <div className={styles.warningCategoryTitle}>
+                      {type === "host" ? "🖥️ Host:" : "📦 Container:"}
+                    </div>
                     {filtered.length === 0 ? (
-                      <div className={styles.warningCategoryTitle}>
-                        {type === 'host'
-                          ? '🖥️ Host: 모든 항목이 정상입니다.'
-                          : '📦 Container: 모든 항목이 정상입니다.'}
+                      <div className={styles.warningStatusNormal}>
+                        모든 항목이 정상입니다.
                       </div>
                     ) : (
-                      <>
-                        <div className={styles.warningCategoryTitle}>
-                          {type === 'host' ? '🖥️ Host:' : '📦 Container:'}
-                        </div>
+                      <div className={styles.warningCardGrid}>
                         {filtered.map((row) => (
                           <div key={row.name} className={styles.warningCard}>
-                            <strong>{row.name}</strong>
-                            <div>초과: {row.exceeded.join(', ')}</div>
+                            <div className={styles.warningCardTitle}>
+                              {row.name}
+                            </div>
+                            <div className={styles.warningExceeded}>
+                              {row.exceeded.map((metric) => (
+                                <span
+                                  key={metric}
+                                  className={styles.warningBadge}
+                                >
+                                  {metric}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         ))}
-                      </>
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
           </div>
-
         </div>
         <div className={styles.dashboard}>
           <div className={styles.row}>
             <div className={styles.card}>
               <div className={styles.header}>
                 <h2>Host Machine Usage</h2>
-                <select value={selectedHostId} onChange={(e) => setSelectedHostId(e.target.value)}>
+                <select
+                  value={selectedHostId}
+                  onChange={(e) => setSelectedHostId(e.target.value)}
+                >
                   {hostData.map((host) => (
                     <option key={host.hostId} value={host.hostId}>
                       {hostIdToName.current[host.hostId] || host.hostId}
@@ -469,9 +567,14 @@ setExceededRows((prev) => {
             <div className={styles.card}>
               <div className={styles.header}>
                 <h2>Container Usage</h2>
-                <select value={selectedContainerId} onChange={(e) => setSelectedContainerId(e.target.value)}>
-                  {containerData.map((c) => (
-                    <option key={c.containerId} value={c.containerId}>{c.containerName}</option>
+                <select
+                  value={selectedHostId}
+                  onChange={(e) => setSelectedHostId(e.target.value)}
+                >
+                  {hostData.map((host) => (
+                    <option key={host.hostId} value={host.hostId}>
+                      {host.hostName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -482,9 +585,14 @@ setExceededRows((prev) => {
             <div className={styles.card}>
               <div className={styles.header}>
                 <h2>Host Network Traffic</h2>
-                <select value={selectedHostId} onChange={(e) => setSelectedHostId(e.target.value)}>
+                <select
+                  value={selectedHostId}
+                  onChange={(e) => setSelectedHostId(e.target.value)}
+                >
                   {hostData.map((host) => (
-                    <option key={host.hostId} value={host.hostId}>{host.hostName}</option>
+                    <option key={host.hostId} value={host.hostId}>
+                      {host.hostName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -493,9 +601,14 @@ setExceededRows((prev) => {
             <div className={styles.card}>
               <div className={styles.header}>
                 <h2>Container Network Traffic</h2>
-                <select value={selectedContainerId} onChange={(e) => setSelectedContainerId(e.target.value)}>
-                  {containerData.map((c) => (
-                    <option key={c.containerId} value={c.containerId}>{c.containerName}</option>
+                <select
+                  value={selectedHostId}
+                  onChange={(e) => setSelectedHostId(e.target.value)}
+                >
+                  {hostData.map((host) => (
+                    <option key={host.hostId} value={host.hostId}>
+                      {host.hostName}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -504,64 +617,63 @@ setExceededRows((prev) => {
           </div>
         </div>
         {showSettings && (
-        <div className={styles.settingsModal}>
-          <h3>⚙️ 임계값 설정</h3>
-          <label>
-          CPU (%):{" "}
-          <input
-            type="number"
-            value={thresholds.cpuPercent}
-            onChange={(e) =>
-              setThresholds((prev) => ({
-                ...prev,
-                cpuPercent: e.target.value,
-              }))
-            }
-          />
-        </label>
+          <div className={styles.settingsModal}>
+            <h3>⚙️ 임계값 설정</h3>
+            <label>
+              CPU (%):{" "}
+              <input
+                type="number"
+                value={thresholds.cpuPercent}
+                onChange={(e) =>
+                  setThresholds((prev) => ({
+                    ...prev,
+                    cpuPercent: e.target.value,
+                  }))
+                }
+              />
+            </label>
 
-        <label>
-          Memory (bytes):{" "}
-          <input
-            type="number"
-            value={thresholds.memoryBytes}
-            onChange={(e) =>
-              setThresholds((prev) => ({
-                ...prev,
-                memoryBytes: e.target.value,
-              }))
-            }
-          />
-        </label>
+            <label>
+              Memory (bytes):{" "}
+              <input
+                type="number"
+                value={thresholds.memoryBytes}
+                onChange={(e) =>
+                  setThresholds((prev) => ({
+                    ...prev,
+                    memoryBytes: e.target.value,
+                  }))
+                }
+              />
+            </label>
 
-        <label>
-          Disk (bytes):{" "}
-          <input
-            type="number"
-            value={thresholds.diskBytes}
-            onChange={(e) =>
-              setThresholds((prev) => ({
-                ...prev,
-                diskBytes: e.target.value,
-              }))
-            }
-          />
-        </label>
+            <label>
+              Disk (bytes):{" "}
+              <input
+                type="number"
+                value={thresholds.diskBytes}
+                onChange={(e) =>
+                  setThresholds((prev) => ({
+                    ...prev,
+                    diskBytes: e.target.value,
+                  }))
+                }
+              />
+            </label>
 
-          <button
-            onClick={() => {
-              applyThresholdsToSummary();
-              setShowSettings(false);
-            }}
-          >
-            적용
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => {
+                applyThresholdsToSummary();
+                setShowSettings(false);
+              }}
+            >
+              적용
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
 }
 
 export default Dashboard;
-
