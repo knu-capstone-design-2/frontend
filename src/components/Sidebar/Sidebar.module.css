@@ -59,3 +59,46 @@ nav a.active {
   background: #16213e;
   color: #ccc;
 }
+
+.warningInner {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+  font-size: 0.95rem;
+}
+
+.warningRow {
+  display: flex;
+  flex-direction: row;      /* 혹시 모르니 명시적으로 추가 */
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: nowrap;        /* ❗한 줄로 유지 */
+}
+
+.warningBoxItem {
+  flex: 1 1 0;              /* ✅ 핵심: 최소 너비 제한 없애기 */
+  min-width: 0;             /* ✅ flex 안에서 줄바꿈 방지 */
+}
+
+
+.warningCategoryTitle {
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.warningCard {
+  background: #fff6f6;
+  border: 1px solid #ffcfcf;
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+
+
+
+
+
