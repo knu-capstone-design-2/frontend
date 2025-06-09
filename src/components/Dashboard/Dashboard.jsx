@@ -12,7 +12,7 @@ function Dashboard() {
   cpuPercent: "",
   memoryBytes: "",
   diskBytes: "",
-  networkTraffic: "", // 유지해도 되고 제거 가능
+  networkTraffic: "", 
 });
 
   const [selectedDate, setSelectedDate] = useState("");
