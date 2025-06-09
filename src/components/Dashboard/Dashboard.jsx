@@ -34,6 +34,7 @@ function Dashboard() {
   const containerNetworkChartInstance = useRef(null);
   const hostIdToName = useRef({});
   const containerIdToName = useRef({});
+  const [exceededRows, setExceededRows] = useState([]);
 
 useEffect(() => {
   const hostMap = {};
@@ -81,36 +82,44 @@ useEffect(() => {
     };
   };
 
-  const setupWebSocket = () => {
-    const socket = new WebSocket(import.meta.env.VITE_WS_URL);
-    socket.onopen = () => console.log("✅ WebSocket 연결됨");
+const setupWebSocket = () => {
+  const socket = new WebSocket(import.meta.env.VITE_WS_URL);
+  socket.onopen = () => console.log("✅ WebSocket 연결됨");
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const source = data.containerId ? "container" : data.hostId ? "host" : "unknown";
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      const source = data.containerId ? "container" : data.hostId ? "host" : "unknown";
 
-        if ((data.type === "localhost" || data.type === "container") && data.networkDelta) {
-          const targetRef = data.type === "localhost" ? hostNetworkChartRef : containerNetworkChartRef;
-          const targetInstance = data.type === "localhost" ? hostNetworkChartInstance : containerNetworkChartInstance;
-          if (!targetInstance.current) {
-            initNetworkChart(targetRef, targetInstance, data.networkDelta);
-          }
-          drawNetworkLive(data.networkDelta, targetInstance);
-        }
-
-        if (data.type === "container") updateContainerChart(data);
-        if (data.type === "localhost") updateHostChart(data);
-        if (data.hostId || data.containerId) updateSummary(data);
-        setLiveMetrics(data);
-      } catch (e) {
-        console.error("웹소켓 데이터 파싱 오류:", e);
+      // ✅ 실시간 수신된 컨테이너 로그 출력
+      if (data.type === "container") {
+        console.log("📦 받은 컨테이너 데이터:", data);
+        updateContainerChart(data);
       }
-    };
 
-    socket.onerror = (e) => console.error("❌ WebSocket 에러", e);
-    socket.onclose = () => console.warn("🔌 WebSocket 연결 종료됨");
+      // ✅ 네트워크 차트 업데이트 (host 또는 container)
+      if ((data.type === "localhost" || data.type === "container") && data.networkDelta) {
+        const targetRef = data.type === "localhost" ? hostNetworkChartRef : containerNetworkChartRef;
+        const targetInstance = data.type === "localhost" ? hostNetworkChartInstance : containerNetworkChartInstance;
+        if (!targetInstance.current) {
+          initNetworkChart(targetRef, targetInstance, data.networkDelta);
+        }
+        drawNetworkLive(data.networkDelta, targetInstance);
+      }
+
+      if (data.type === "localhost") updateHostChart(data);
+      if (data.hostId || data.containerId) updateSummary(data);
+      setLiveMetrics(data);
+
+    } catch (e) {
+      console.error("웹소켓 데이터 파싱 오류:", e);
+    }
   };
+
+  socket.onerror = (e) => console.error("❌ WebSocket 에러", e);
+  socket.onclose = () => console.warn("🔌 WebSocket 연결 종료됨");
+};
+
 
 function formatBytes(bytes) {
   if (bytes === 0) return "0 B";
@@ -140,19 +149,46 @@ const updateSummary = (data) => {
   const cpu = data.cpuUsagePercent || 0;
 
   const memoryUsed = data.memoryUsedBytes || 0;
-  const memoryTotal = data.memoryTotalBytes || 1; // 0으로 나누는 에러 방지
-  const memory = `${formatBytes(memoryUsed)} / ${formatBytes(memoryTotal)}`;
+  const memoryTotal = data.memoryTotalBytes || 1;
+  const memoryPercent = (memoryUsed / memoryTotal) * 100;
 
   const diskUsed = data.diskUsedBytes || 0;
   const diskTotal = data.diskTotalBytes || 1;
-  const disk = `${formatBytes(diskUsed)} / ${formatBytes(diskTotal)}`;
+  const diskPercent = (diskUsed / diskTotal) * 100;
 
-  setSummaryRows((prev) =>
-    [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }]
+  const memory = `${formatBytes(memoryUsed)}`;
+  const disk = `${formatBytes(diskUsed)}`;
+
+  // ✅ Top 3 업데이트
+  setSummaryRows((prev) => {
+    const updated = [...prev.filter((r) => r.name !== name), { name, cpu, memory, disk }];
+
+    const uniqueMap = new Map();
+    updated.forEach((row) => uniqueMap.set(row.name, row));
+    const deduplicated = Array.from(uniqueMap.values());
+
+    return deduplicated
       .sort((a, b) => b.cpu - a.cpu)
-      .slice(0, 3)
-  );
+      .slice(0, 3);
+  });
+
+  // ✅ 임계값 초과 감지
+  const exceeded = [];
+  if (thresholds.cpuPercent && cpu > parseFloat(thresholds.cpuPercent)) exceeded.push("CPU");
+  if (thresholds.memoryBytes && memoryPercent > (parseInt(thresholds.memoryBytes) / memoryTotal) * 100) exceeded.push("Memory");
+  if (thresholds.diskBytes && diskPercent > (parseInt(thresholds.diskBytes) / diskTotal) * 100) exceeded.push("Disk");
+
+  const type = data.hostId ? 'host' : data.containerId ? 'container' : 'unknown';
+
+setExceededRows((prev) => {
+  const filtered = prev.filter((r) => r.name !== name); // 중복 제거
+  return exceeded.length > 0
+    ? [...filtered, { name, type, exceeded }]
+    : filtered;
+});
+
 };
+
 
   const updateHostChart = (data) => {
     const chart = hostChartInstance.current;
@@ -359,7 +395,7 @@ const updateSummary = (data) => {
           </div>
         )}
         <div className={styles.summaryBox}>
-          <h2>Top 3 Under-resourced</h2>
+          <h2>Real-time summary</h2>
           <table className={styles.summaryTable}>
             <thead>
               <tr>
@@ -380,6 +416,40 @@ const updateSummary = (data) => {
               ))}
             </tbody>
           </table>
+
+          {/* ✅ 경고 내용도 같은 박스 안에 포함 */}
+          <div className={styles.warningInner}>
+            <h3>⚠️ 임계값 초과 리소스</h3>
+            <div className={styles.warningRow}>
+              {['host', 'container'].map((type) => {
+                const filtered = exceededRows.filter((r) => r.type === type);
+                return (
+                  <div key={type} className={styles.warningBoxItem}>
+                    {filtered.length === 0 ? (
+                      <div className={styles.warningCategoryTitle}>
+                        {type === 'host'
+                          ? '🖥️ Host: 모든 항목이 정상입니다.'
+                          : '📦 Container: 모든 항목이 정상입니다.'}
+                      </div>
+                    ) : (
+                      <>
+                        <div className={styles.warningCategoryTitle}>
+                          {type === 'host' ? '🖥️ Host:' : '📦 Container:'}
+                        </div>
+                        {filtered.map((row) => (
+                          <div key={row.name} className={styles.warningCard}>
+                            <strong>{row.name}</strong>
+                            <div>초과: {row.exceeded.join(', ')}</div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
         <div className={styles.dashboard}>
           <div className={styles.row}>
